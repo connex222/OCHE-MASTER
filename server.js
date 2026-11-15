@@ -293,7 +293,13 @@ function recordVisit(room, bust) {
   g.visitRecorded = true;
   const id = g.order[g.cur];
   const st = g.stats[id];
-  const total = bust ? 0 : g.darts.reduce((a, d) => a + d.score, 0);
+  // Announce and record points the rules actually credit, not merely the
+  // numbers physically hit (e.g. darts before double-in, or Shanghai misses).
+  let total = bust ? 0 : g.darts.reduce((a, d) => a + d.score, 0);
+  if (!bust && room.config.mode === 'x01') total = g.modeState.turnScored;
+  if (!bust && room.config.mode === 'shanghai') {
+    total = g.darts.filter(d => d.number === g.round).reduce((a, d) => a + d.score, 0);
+  }
   st.visits++;
   st.points += total;
   st.best = Math.max(st.best, total);

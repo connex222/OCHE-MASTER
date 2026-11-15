@@ -507,6 +507,7 @@ function buildBoardCache() {
    Game state from the server
    ===================================================================== */
 let S = null;                    // latest server state
+let lastVisit = null;            // last server-confirmed, rule-credited visit total
 const aims = {};                 // live crosshairs {id: {x, y, sx, sy, t}}
 let flying = null;               // dart currently in the air
 const falling = [];              // bounce-outs and short throws falling away
@@ -819,9 +820,10 @@ function renderPanel() {
   } else {
     hint.textContent = g.hint || '';
   }
-  const recentVisit = g.turnPhase === 'collect';
-  $('visitScore').classList.toggle('on', recentVisit);
-  if (recentVisit) $('visitNumber').textContent = g.darts.some(d => d.bust) ? '0' : String(g.darts.reduce((t, d) => t + d.score, 0));
+  const recentVisit = g.turnPhase === 'collect' && lastVisit && lastVisit.id === g.currentId &&
+    ['x01', 'practice', 'shanghai'].includes(S.config.mode);
+  $('visitScore').classList.toggle('on', !!recentVisit);
+  if (recentVisit) $('visitNumber').textContent = String(lastVisit.total);
 
   // Banner
   const cur = player(g.currentId);
@@ -901,6 +903,7 @@ function onMessage(m) {
     case 'state': onState(m); break;
     case 'joined': Sound.play('ui_join'); toast(m.name + ' joined'); break;
     case 'gameStart':
+      lastVisit = null;
       Sound.stopLoop('music_lobby');
       Sound.loop('ambience_pub', 0.35);
       callout(m.title, 'Game on', 'gold');
@@ -972,6 +975,7 @@ function onDart(m) {
 }
 
 function onVisit(m) {
+  lastVisit = { id: m.id, total: m.total, bust: m.bust };
   if (m.bust) return;
   Sound.play('darts_collect', 0.8);
   if (!m.call) return;
