@@ -44,6 +44,9 @@ const state = (code, test) => m => m.t === 'state' && m.code === code && test(m)
   await sendWait(p1,{t:'join',code:b,playerId:'p1',name:'p1'},p1,m=>m.t==='welcome'&&m.code===b);
   console.log('PASS navigation: lobby departure removes seat and joining another room works');
 
+  // Default OCHE matches include a bull-off; turn it off explicitly for this navigation test.
+  await sendWait(p2,{t:'setup',mode:'x01',options:{start:301},legs:1,bullOff:false},
+    tvA,state(a,m=>m.phase==='lobby'&&m.config.mode==='x01'&&m.config.bullOff===false));
   const started=await sendWait(p2,{t:'start'},tvA,state(a,m=>m.phase==='playing'&&m.game.turnPhase==='aim'));
   assert.equal(started.game.order.length,2);
   const left=await sendWait(p2,{t:'leave'},tvA,state(a,m=>m.phase==='playing' && m.players.some(p=>p.id==='p2'&&!p.online)));
