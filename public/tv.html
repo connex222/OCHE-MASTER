@@ -253,6 +253,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 </div>
 
 <script src="/assets/js/qrcode.js"></script>
+<script src="/assets/js/number-cues.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -340,12 +341,15 @@ const Sound = (() => {
         await optional[key];
       })
     ]);
-    // Preload the most common new studio number calls after the essential
-    // launch audio has loaded. This does not delay the TV lobby or first throw.
-    const studioScores = [12, 18, 20, 24, 26, 32, 36, 40, 45, 50, 57, 60, 80, 81, 85, 95, 100, 120, 121, 125, 140, 150, 160, 170];
+    // Warm additional studio recordings progressively, without extending the
+    // "Start" wait. Individual recordings take priority; the six long number
+    // reels are only decoded once, then played from measured word boundaries.
+    const studioScores = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 18, 20, 24, 26, 32, 36, 40, 45, 50, 57, 60, 80, 81, 85, 95, 100, 120, 121, 125, 140, 150, 160, 170];
+    const studioPacks = [...new Set(Object.values(window.OCHE_NUMBER_CUES || {}).map(cue => cue[0]))];
     async function warmNumberCalls() {
-      for (let i = 0; i < studioScores.length; i += 6) {
-        await Promise.all(studioScores.slice(i, i + 6).map(n => loadOptional('caller/' + n)));
+      const keys = [...studioScores.map(n => String(n)), ...studioPacks];
+      for (let i = 0; i < keys.length; i += 6) {
+        await Promise.all(keys.slice(i, i + 6).map(key => loadOptional('caller/' + key)));
       }
     }
     void warmNumberCalls();
@@ -359,6 +363,25 @@ const Sound = (() => {
     const s = ctx.createBufferSource(); s.buffer = b; s.playbackRate.value = rate; s.loop = loop;
     const g = ctx.createGain(); g.gain.value = vol;
     s.connect(g).connect(master); s.start();
+    return { s, g };
+  }
+  // Play exactly one score from a grouped studio recording. A short fade at
+  // each boundary avoids clicks without clipping the preceding/following score.
+  function playSegment(b, from, until, vol = 1) {
+    if (!ctx || !b || !Number.isFinite(from) || !Number.isFinite(until)) return null;
+    const start = Math.max(0, Math.min(from, b.duration - 0.08));
+    const end = Math.min(until, b.duration);
+    const duration = end - start;
+    if (duration < 0.12) return null;
+    const s = ctx.createBufferSource(); s.buffer = b;
+    const g = ctx.createGain();
+    const now = ctx.currentTime;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(vol, now + Math.min(0.015, duration / 4));
+    g.gain.setValueAtTime(vol, now + Math.max(0.03, duration - 0.055));
+    g.gain.linearRampToValueAtTime(0, now + duration);
+    s.connect(g).connect(master);
+    s.start(0, start, duration);
     return { s, g };
   }
   function noise(seconds) {
@@ -438,7 +461,7 @@ const Sound = (() => {
     }
     if (m && window.speechSynthesis) speechSynthesis.cancel();
   }
-  return { init, play, loop, stopLoop, loadOptional, playBuffer, setMuted, duckVoice, unduckVoice, get muted() { return muted; }, get ready() { return !!ctx; } };
+  return { init, play, loop, stopLoop, loadOptional, playBuffer, playSegment, setMuted, duckVoice, unduckVoice, get muted() { return muted; }, get ready() { return !!ctx; } };
 })();
 
 /* The darts caller. Uses recorded clips from /assets/sfx/caller/ when present,
@@ -473,14 +496,19 @@ const Caller = (() => {
     if (Sound.muted) return;
     // New calls supersede old ones, including clips still being downloaded.
     const id = ++serial;
-    const clip = Sound.ready && key ? await Sound.loadOptional('caller/' + key) : null;
+    const cue = key && window.OCHE_NUMBER_CUES ? window.OCHE_NUMBER_CUES[key] : null;
+    const sourceKey = cue ? cue[0] : key;
+    const clip = Sound.ready && sourceKey ? await Sound.loadOptional('caller/' + sourceKey) : null;
     if (id !== serial || Sound.muted) return;
     if (activeClip) { try { activeClip.s.stop(); } catch { /* already stopped */ } activeClip = null; }
     if (window.speechSynthesis) speechSynthesis.cancel();
     if (clip) {
-      Sound.duckVoice(clip.duration * 1000 + 250);
-      activeClip = Sound.playBuffer(clip, 1);
-      activeClip.s.onended = () => { if (id === serial) { activeClip = null; Sound.unduckVoice(); } };
+      const duration = cue ? Math.max(0.12, Math.min(cue[2], clip.duration) - cue[1]) : clip.duration;
+      Sound.duckVoice(duration * 1000 + 250);
+      activeClip = cue ? Sound.playSegment(clip, cue[1], cue[2]) : Sound.playBuffer(clip, 1);
+      if (activeClip) {
+        activeClip.s.onended = () => { if (id === serial) { activeClip = null; Sound.unduckVoice(); } };
+      } else speak(text, id);
     } else speak(text, id);
   }
   return { say, speak, cancel };

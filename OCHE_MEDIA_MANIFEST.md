@@ -71,3 +71,38 @@ The following 24 individual MP3 clips were created in Creative Claw with the **s
 - `170.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/fd7e5b38-53f7-4d39-8e83-35ca5718897a.mp3
 
 The production Docker build downloads these clips to `public/assets/sfx/caller/` via `deployment/fetch-media.js`. The TV precaches the numeric library in the background after its essential music and walk-on assets load.
+
+## Complete number-score narration library — 15 November 2026
+
+Every numeric score **0–180** has a professionally AI-generated British OCHE caller announcement. There are 38 single-score MP3s in total (26 previously recorded, including zero and 180, plus the 12 listed below). The remaining 143 numbers are individual timed cues in six studio reels. They use the same `JBFqnCBsd6RMkjVDRZzb` voice as the original avatar walk-ons.
+
+### Newly recorded single-score files
+
+- `1.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/9323f170-7961-4c2e-b3fc-83467d2eccd4.mp3
+- `2.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/ac7c960e-fa2f-445c-8d1b-b36f8e0c489c.mp3
+- `3.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/67230a3a-1758-4ebb-9a79-85033ed5be42.mp3
+- `4.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/3017f680-542e-4fbc-b656-7803e99ae39d.mp3
+- `5.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/15b6530d-1852-413a-bff9-d3cfa9d560f0.mp3
+- `6.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/b7e002e4-85f5-4b6b-af81-7aca219f1556.mp3
+- `7.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/251f4844-1185-48a0-b393-f7ac9c0d339b.mp3
+- `8.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/6534f652-e570-46b4-a2a0-60f6dfe40c1d.mp3
+- `9.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/0ff97e0e-45d2-407c-b92d-41b77e123cc0.mp3
+- `10.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/7c4c47d8-6ee5-413c-b2be-8accd0eeaf71.mp3
+- `11.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/0a73d94f-b2f7-4eb8-a7a2-8530ed903a85.mp3
+- `13.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/273e64b3-e00f-49d2-a702-b5818d3a8a16.mp3
+
+### Shared studio number reels
+
+- `numberpack_14_39.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/d1635dce-c76b-4694-878a-5fcb54265b3b.mp3
+- `numberpack_40_69.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/5859d486-a925-4c88-b726-da606246a12d.mp3
+- `numberpack_70_99.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/f7726802-bbc5-46ba-9991-2dc28d6ce158.mp3
+- `numberpack_100_129.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/cf0d697c-17a6-4d79-a36a-2db15fa606cb.mp3
+- `numberpack_130_159.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/39f1b25e-a34d-4a6c-99b8-601421c769d5.mp3
+- `numberpack_160_179.mp3` — https://cdn.creativeclaw.co/u/f3e7a3b1/audio/f979cea8-6f5b-4f8d-bbcc-42ca9c2b800f.mp3
+
+- Cue definitions: `public/assets/js/number-cues.js` (source asset and playback boundaries).
+- Downloader: `deployment/fetch-media.js` (Render build; fail-safe if an audio asset is unavailable).
+- Audio playback: `public/tv.html` (recorded clip first, built-in speech on media failure).
+- Automated validation: `test/numeric-caller.js`.
+
+**The studio reels are not meant to be played in full during a game.** The TV plays only the correct number's bounded interval, derived from provider word timings. The previous 24 individual-number tracks remain preferred and unchanged.

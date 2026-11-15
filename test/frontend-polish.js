@@ -104,7 +104,9 @@ const mediaManifest = read('deployment/fetch-media.js');
 for (const n of studioScores) {
   assert.match(mediaManifest, new RegExp("'"+n+"\\.mp3':'[0-9a-f-]+\\.mp3'"), 'Recorded caller clip '+n+' must be in Render manifest');
 }
-assert.match(tv, /const studioScores = \[12, 18, 20, 24/);
+assert.match(tv, /const studioScores = \[1, 2, 3, 4/);
+assert.match(tv, /const studioPacks = \[\.\.\.new Set/);
+assert.match(tv, /src="\/assets\/js\/number-cues\.js"/);
 assert.match(tv, /void warmNumberCalls\(\)/);
 assert.match(tv, /Caller\.say\(String\(t\), words\(t\)\)/);
 console.log('PASS frontend: 24 matching recorded score calls ship with lazy fallback and background warm-up');

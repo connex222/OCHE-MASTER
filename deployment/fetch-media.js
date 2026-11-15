@@ -72,7 +72,27 @@ const caller = {
   '140.mp3':'df25429c-8281-4a8e-96b5-0808d24199a3.mp3',
   '150.mp3':'cece8fd2-2e04-475f-82f3-38bf6b1071bd.mp3',
   '160.mp3':'a54f0e5e-7e50-4248-bad7-30a088746c7c.mp3',
-  '170.mp3':'fd7e5b38-53f7-4d39-8e83-35ca5718897a.mp3'
+  '170.mp3':'fd7e5b38-53f7-4d39-8e83-35ca5718897a.mp3',
+  // One-call score files (Creative Claw original British match caller)
+  '1.mp3':'9323f170-7961-4c2e-b3fc-83467d2eccd4.mp3',
+  '2.mp3':'ac7c960e-fa2f-445c-8d1b-b36f8e0c489c.mp3',
+  '3.mp3':'67230a3a-1758-4ebb-9a79-85033ed5be42.mp3',
+  '4.mp3':'3017f680-542e-4fbc-b656-7803e99ae39d.mp3',
+  '5.mp3':'15b6530d-1852-413a-bff9-d3cfa9d560f0.mp3',
+  '6.mp3':'b7e002e4-85f5-4b6b-af81-7aca219f1556.mp3',
+  '7.mp3':'251f4844-1185-48a0-b393-f7ac9c0d339b.mp3',
+  '8.mp3':'6534f652-e570-46b4-a2a0-60f6dfe40c1d.mp3',
+  '9.mp3':'0ff97e0e-45d2-407c-b92d-41b77e123cc0.mp3',
+  '10.mp3':'7c4c47d8-6ee5-413c-b2be-8accd0eeaf71.mp3',
+  '11.mp3':'0a73d94f-b2f7-4eb8-a7a2-8530ed903a85.mp3',
+  '13.mp3':'273e64b3-e00f-49d2-a702-b5818d3a8a16.mp3',
+  // Multi-score studio reels with precisely timed number cues in number-cues.js
+  'numberpack_14_39.mp3':'d1635dce-c76b-4694-878a-5fcb54265b3b.mp3',
+  'numberpack_40_69.mp3':'5859d486-a925-4c88-b726-da606246a12d.mp3',
+  'numberpack_70_99.mp3':'f7726802-bbc5-46ba-9991-2dc28d6ce158.mp3',
+  'numberpack_100_129.mp3':'cf0d697c-17a6-4d79-a36a-2db15fa606cb.mp3',
+  'numberpack_130_159.mp3':'39f1b25e-a34d-4a6c-99b8-601421c769d5.mp3',
+  'numberpack_160_179.mp3':'f979cea8-6f5b-4f8d-bbcc-42ca9c2b800f.mp3'
 };
 async function get(url, tries=3, headers={}) {
   for (let n=0;n<tries;n++) {

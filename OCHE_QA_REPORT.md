@@ -79,7 +79,7 @@ Updated: 15 November 2026 (UTC)
 - Review all twelve full-length figures on a 720p TV, and the portrait crops on the scoreboard. Confirm there is no stretching, cropping or visual mismatch.
 - Test the character picker on iPhone Safari and Android Chrome with two or more real players, including changing characters and reconnecting.
 - Complete full three-player Cricket and four-player Killer matches on physical phones, including calibration, fairness, results and replay.
-- If the browser-generated ordinary score totals sound noticeably inconsistent, consider replacing those with a larger matching recorded numeric library. The Bible makes that optional; no new modes are needed.
+- The full 0–180 score library is now professionally AI-generated in the established British OCHE caller voice. Check loudness, clipping and pacing on the actual TV; dynamic player names and checkout reminders still use device speech.
 
 ## 15 November 2026 — Creative Claw number caller pack
 
@@ -88,3 +88,18 @@ Updated: 15 November 2026 (UTC)
 - Every recording is mapped to the exact `<score>.mp3` filename in the production downloader, validated by an additional frontend release check. Render confirmed **63 audio clips and 2 fonts**, and production commit `c33dbd55df3afb11c5c45ab5bf7a6a6214dbf269` became live.
 - The TV loads the numeric clips progressively after the essential sound assets, avoiding a longer start screen. Uncovered scores still use browser speech rather than giving no call.
 - The clips are AI-generated studio voice files; they are not human voice-actor recordings. Final audibility, pronunciation, relative loudness and pacing on TV hardware still require listening checks.
+
+## 15 November 2026 — complete recorded numeric caller (0–180)
+
+- **181 separate score calls now covered:** 38 individual MP3 clips (including 0 and 180) plus 143 individually playable segments from six Creative Claw studio score recordings. All generated with the same British ElevenLabs v4 caller voice (`JBFqnCBsd6RMkjVDRZzb`).
+- Six scored audio reels span 14–39, 40–69, 70–99, 100–129, 130–159 and 160–179. Numbers already delivered individually are excluded from these reels. `public/assets/js/number-cues.js` records exact speech intervals from ElevenLabs word timings, checked against every expected English number and against unconsumed transcript words.
+- The WebAudio caller plays just the appropriate interval from a shared recording, with a short fade-in/out to prevent clicks. The existing `180`, `Game on`, `Game shot`, walk-ons and other signature recordings have not been changed.
+- The TV precaches 36 commonly used individual number files and six reels after essential sounds finish loading. If a media file fails to load, browser speech remains the reliability fallback rather than dropping the score announcement.
+- The Render Docker build must now pass `node test/numeric-caller.js`: 181 distinct scores, six validated pack files, bounds on 143 cue intervals, local script usage and JS syntax. Production media inventory: **81 audio files + 2 fonts**, all fetched at build time.
+- This changes **only audio presentation**. Dart physics, scoring, game modes, 12 avatars and navigation logic are unchanged.
+
+### Real-device audio sign-off still outstanding
+
+Listening to the grouped score clips on actual TV speakers is required before calling this AAA-complete. Check starts/ends of scores in the low teens, hyphenated scores such as 47 and 96, and long announcements such as 117 and 159. Check speech against darts impacts and the pub ambience, and listen for any abrupt syllables or inconsistent loudness.
+
+Dynamic player names and phrases such as “you require ...” still use the browser's built-in voice because those phrases change per match. Recorded number scores no longer depend on browser speech during normal operation.
