@@ -14,8 +14,8 @@
   --slate-hi: #2B3833;
   --chalk: #EEEDE6;
   --chalk-dim: #A8B1A9;
-  --red: #D7263D;
-  --green: #1F8A4C;
+  --red: #C8202F;
+  --green: #127A3E;
   --brass: #D4A73A;
   --wood: #5A3B22;
   --wood-dark: #34210F;
@@ -62,6 +62,14 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 .marks { display: flex; gap: .35vw; margin-top: .5vh; }
 .marks span { width: 1.9vw; min-width: 20px; text-align: center; font-size: clamp(11px, .85vw, 16px); color: var(--chalk-dim); }
 .marks b { display: block; font-family: var(--chalkface); font-size: clamp(16px, 1.45vw, 28px); color: var(--chalk); height: 1.3em; line-height: 1.3em; font-weight: 400; }
+/* Six-to-eight-player Cricket: marks must fit inside their own player row. */
+#board.cricketCompact .row { padding-top: .2vh; padding-bottom: .2vh; }
+#board.cricketCompact .row .name { font-size: clamp(14px, 1.25vw, 22px); line-height: 1.05; }
+#board.cricketCompact .row .sub { display: none; }
+#board.cricketCompact .row .main { font-size: clamp(24px, 3vw, 54px); }
+#board.cricketCompact .marks { margin-top: .1vh; gap: .12vw; }
+#board.cricketCompact .marks span { min-width: 17px; width: 1.65vw; font-size: clamp(9px, .72vw, 13px); line-height: 1; }
+#board.cricketCompact .marks b { font-size: clamp(14px, 1.2vw, 22px); line-height: 1; height: 1.05em; }
 #visit { display: flex; gap: .6vw; margin: 1.2vh 0 .8vh; }
 .slot {
   flex: 1; height: clamp(40px, 6vh, 74px); border: 2px dashed rgba(238,237,230,.28); border-radius: 6px;
@@ -268,7 +276,7 @@ const Sound = (() => {
   const NAMES = ['throw_whoosh', 'impact_board_1', 'impact_board_2', 'impact_board_3', 'impact_wire', 'impact_wall',
     'dart_fall', 'darts_collect', 'bull_sting', 'crowd_cheer', 'crowd_roar', 'crowd_groan', 'crowd_applause',
     'ui_join', 'ui_turn', 'sting_win', 'ambience_pub', 'music_lobby'];
-  let ctx = null, master = null, muted = false;
+  let ctx = null, master = null, muted = false, voiceDucked = false, voiceTimer = null;
   const buf = {}, optional = {}, loops = {};
 
   async function fetchBuf(path) {
@@ -281,7 +289,7 @@ const Sound = (() => {
   async function init() {
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
     await Promise.all(NAMES.map(async n => { buf[n] = await fetchBuf(n); }));
   }
   async function loadOptional(path) {
@@ -344,7 +352,7 @@ const Sound = (() => {
   }
   function loop(name, vol) {
     if (!ctx || !buf[name] || loops[name]) return;
-    loops[name] = playBuffer(buf[name], muted ? 0 : vol, 1, true);
+    loops[name] = playBuffer(buf[name], muted ? 0 : vol * (voiceDucked ? 0.2 : 1), 1, true);
     loops[name].vol = vol;
   }
   function stopLoop(name) {
@@ -353,43 +361,71 @@ const Sound = (() => {
     setTimeout(() => { try { l.s.stop(); } catch { /* ignore */ } }, 2000);
     delete loops[name];
   }
+  function voiceMix(ducked) {
+    voiceDucked = ducked;
+    if (!ctx) return;
+    for (const l of Object.values(loops)) l.g.gain.setTargetAtTime(muted ? 0 : l.vol * (ducked ? 0.2 : 1), ctx.currentTime, 0.12);
+  }
+  function duckVoice(milliseconds) {
+    clearTimeout(voiceTimer);
+    voiceMix(true);
+    voiceTimer = setTimeout(() => voiceMix(false), Math.max(500, Math.min(7000, milliseconds)));
+  }
+  function unduckVoice() { clearTimeout(voiceTimer); voiceMix(false); }
   function setMuted(m) {
     muted = m;
-    for (const l of Object.values(loops)) l.g.gain.setTargetAtTime(m ? 0 : l.vol, ctx.currentTime, 0.1);
+    if (ctx) {
+      master.gain.setTargetAtTime(m ? 0 : 0.9, ctx.currentTime, 0.06);
+      for (const l of Object.values(loops)) l.g.gain.setTargetAtTime(m ? 0 : l.vol * (voiceDucked ? 0.2 : 1), ctx.currentTime, 0.1);
+    }
     if (m && window.speechSynthesis) speechSynthesis.cancel();
   }
-  return { init, play, loop, stopLoop, loadOptional, playBuffer, setMuted, get muted() { return muted; }, get ready() { return !!ctx; } };
+  return { init, play, loop, stopLoop, loadOptional, playBuffer, setMuted, duckVoice, unduckVoice, get muted() { return muted; }, get ready() { return !!ctx; } };
 })();
 
 /* The darts caller. Uses recorded clips from /assets/sfx/caller/ when present,
    otherwise the browser's built-in British voice. */
 const Caller = (() => {
-  let voice = null;
+  let voice = null, serial = 0, activeClip = null;
   function pickVoice() {
     if (!window.speechSynthesis) return null;
     const vs = speechSynthesis.getVoices();
     return vs.find(v => /Daniel|UK English Male|en-GB.*Male/i.test(v.name)) || vs.find(v => v.lang === 'en-GB') || vs.find(v => v.lang && v.lang.startsWith('en')) || null;
   }
   if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => { voice = pickVoice(); };
-  function speak(text) {
+  function cancel() {
+    serial++;
+    if (activeClip) { try { activeClip.s.stop(); } catch { /* already stopped */ } activeClip = null; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    Sound.unduckVoice();
+  }
+  function speak(text, callId) {
     if (!window.speechSynthesis || Sound.muted) return;
-    speechSynthesis.cancel();
+    const id = callId === undefined ? ++serial : callId;
     const u = new SpeechSynthesisUtterance(text);
     voice = voice || pickVoice();
     if (voice) u.voice = voice;
     u.lang = 'en-GB'; u.rate = 0.9; u.pitch = 0.78; u.volume = 1;
+    u.onend = u.onerror = () => { if (serial === id) Sound.unduckVoice(); };
+    Sound.duckVoice(Math.max(1800, text.length * 110));
+    speechSynthesis.cancel();
     speechSynthesis.speak(u);
   }
   async function say(key, text) {
     if (Sound.muted) return;
-    // Recorded calls take priority; never silently suppress the British-voice
-    // fallback when an optional number clip or audio context is unavailable.
+    // New calls supersede old ones, including clips still being downloaded.
+    const id = ++serial;
     const clip = Sound.ready && key ? await Sound.loadOptional('caller/' + key) : null;
-    if (Sound.muted) return;
-    if (clip) Sound.playBuffer(clip, 1);
-    else speak(text);
+    if (id !== serial || Sound.muted) return;
+    if (activeClip) { try { activeClip.s.stop(); } catch { /* already stopped */ } activeClip = null; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    if (clip) {
+      Sound.duckVoice(clip.duration * 1000 + 250);
+      activeClip = Sound.playBuffer(clip, 1);
+      activeClip.s.onended = () => { if (id === serial) { activeClip = null; Sound.unduckVoice(); } };
+    } else speak(text, id);
   }
-  return { say, speak };
+  return { say, speak, cancel };
 })();
 
 const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
@@ -747,6 +783,7 @@ function renderPanel() {
   if (!S) return;
   const lobby = S.phase === 'lobby';
   $('board').classList.toggle('lobbyOn', lobby);
+  $('board').classList.toggle('cricketCompact', !!(S.game && S.game.view && S.game.view.type === 'cricket' && S.game.order.length >= 6));
   $('modeLine').textContent = lobby ? '' : S.title;
   const url = location.host + '/phone';
   const joinHref = location.origin + '/phone?code=' + encodeURIComponent(S.code || '');
@@ -1015,6 +1052,7 @@ $('startBtn').addEventListener('click', begin);
 $('splash').addEventListener('click', e => { if (e.target.id !== 'startBtn') begin(); });
 $('mute').addEventListener('click', () => {
   Sound.setMuted(!Sound.muted);
+  if (Sound.muted) Caller.cancel();
   $('mute').textContent = Sound.muted ? 'Sound off' : 'Sound on';
 });
 document.addEventListener('keydown', e => {
