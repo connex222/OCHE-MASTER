@@ -511,7 +511,10 @@ const Caller = (() => {
       } else speak(text, id);
     } else speak(text, id);
   }
-  return { say, speak, cancel };
+  function isBusy() {
+    return !!activeClip || !!(window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending));
+  }
+  return { say, speak, cancel, isBusy };
 })();
 
 const ONES = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
@@ -630,6 +633,8 @@ function buildBoardCache() {
    ===================================================================== */
 let S = null;                    // latest server state
 let lastVisit = null;            // last server-confirmed, rule-credited visit total
+let recentVisitAnnouncement = null; // suppress replay of an already called visit
+let recentScoreCall = null;         // avoid repeating the same score in adjacent turn prompts
 const aims = {};                 // live crosshairs {id: {x, y, sx, sy, t}}
 let flying = null;               // dart currently in the air
 const falling = [];              // bounce-outs and short throws falling away
@@ -1072,6 +1077,24 @@ let ws = null, replaced = false;
 // Prevent a delayed first-turn announcement from interrupting "Game on".
 // Announcements are only made if the player still has the turn.
 let scheduledTurnCall = null, gameOnVoiceUntil = 0;
+// Turn reminders have lower priority than recorded score calls. They must
+// never interrupt a visit score, or arrive after the player has thrown.
+function queueTurnAnnouncement(id, announcement, delay) {
+  clearTimeout(scheduledTurnCall);
+  const expires = performance.now() + 3500;
+  function attempt() {
+    scheduledTurnCall = null;
+    if (!S || !S.game || S.game.currentId !== id ||
+        !['playing', 'bulloff'].includes(S.phase) ||
+        S.game.turnPhase !== 'aim' || S.game.darts.length) return;
+    if (Caller.isBusy()) {
+      if (performance.now() < expires) scheduledTurnCall = setTimeout(attempt, 180);
+      return;
+    }
+    Caller.say(null, announcement);
+  }
+  scheduledTurnCall = setTimeout(attempt, Math.max(0, delay));
+}
 let host = null;
 try { host = JSON.parse(sessionStorage.getItem('oche.host') || 'null'); } catch { host = null; }
 
@@ -1108,6 +1131,8 @@ function onMessage(m) {
       Caller.cancel();
       $('walkonOverlay').classList.remove('on');
       lastVisit = null;
+      recentVisitAnnouncement = null;
+      recentScoreCall = null;
       Sound.stopLoop('music_lobby');
       Sound.loop('ambience_pub', 0.35);
       callout(m.title, 'Game on', 'gold');
@@ -1119,15 +1144,19 @@ function onMessage(m) {
     case 'turn': {
       Sound.play('ui_turn', 0.7);
       const p = player(m.id);
-      const announcement = p && m.require ? p.name + ', you require ' + words(m.require)
+      const recentlyCalledSameScore = !!(recentScoreCall && m.require === recentScoreCall.score &&
+        performance.now() - recentScoreCall.at < 5500);
+      // A 100 visit followed by "you require one hundred" sounds like the
+      // score being read by two different announcers. Say the name only when
+      // that numeric value has just been called; keep the Bible's requirement
+      // announcement for other cases.
+      const announcement = p && m.require
+        ? recentlyCalledSameScore ? p.name + ', your turn' : p.name + ', you require ' + words(m.require)
         : p && m.bulloff ? p.name + ', for the bull' : '';
       clearTimeout(scheduledTurnCall);
       if (announcement) {
         const delay = Math.max(350, gameOnVoiceUntil - performance.now());
-        scheduledTurnCall = setTimeout(() => {
-          if (S && S.game && S.game.currentId === m.id &&
-              (S.phase === 'playing' || S.phase === 'bulloff')) Caller.say(null, announcement);
-        }, delay);
+        queueTurnAnnouncement(m.id, announcement, delay);
       }
       break;
     }
@@ -1137,8 +1166,14 @@ function onMessage(m) {
       else aims[m.id] = { x: m.x, y: m.y, sx: m.x, sy: m.y, t: performance.now() };
       break;
     }
-    case 'dart': onDart(m); break;
-    case 'visit': onVisit(m); break;
+    case 'dart':
+      clearTimeout(scheduledTurnCall);
+      onDart(m);
+      break;
+    case 'visit':
+      clearTimeout(scheduledTurnCall);
+      onVisit(m);
+      break;
     case 'legEnd':
       clearTimeout(scheduledTurnCall);
       onLegEnd(m);
@@ -1151,6 +1186,9 @@ function onMessage(m) {
     case 'undone': toast('Last dart undone'); flying = null; break;
     case 'replaced':
       replaced = true;
+      clearTimeout(scheduledTurnCall);
+      Caller.cancel();
+      Sound.setMuted(true);
       document.body.innerHTML = '<p style="padding:10vh 5vw;font-size:4vw;color:#eee;font-family:sans-serif">This game is now showing on another screen.</p>';
       break;
   }
@@ -1193,10 +1231,20 @@ function onDart(m) {
 }
 
 function onVisit(m) {
+  const now = performance.now();
+  // Ignore a retransmitted visit immediately after it was already announced.
+  // A fresh identical visit is legitimate later; 3500ms is shorter than a
+  // complete follow-up three-dart visit including collection/flight timers.
+  const repeated = recentVisitAnnouncement && recentVisitAnnouncement.id === m.id &&
+    recentVisitAnnouncement.total === m.total && recentVisitAnnouncement.bust === !!m.bust &&
+    now - recentVisitAnnouncement.at < 3500;
   lastVisit = { id: m.id, total: m.total, bust: m.bust };
+  if (repeated) return;
+  recentVisitAnnouncement = { id: m.id, total: m.total, bust: !!m.bust, at: now };
   if (m.bust) return;
   Sound.play('darts_collect', 0.8);
   if (!m.call) return;
+  recentScoreCall = { score: m.total, at: now };
   const t = m.total;
   if (t === 180) { callout('180', 'One hundred and eighty', 'gold'); Sound.play('crowd_roar'); Caller.say('180', 'One hundred and eighty!'); }
   else if (t >= 100) { callout(String(t), null, 'gold'); Sound.play('crowd_cheer', 0.8); Caller.say(String(t), words(t)); }

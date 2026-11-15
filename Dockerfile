@@ -23,6 +23,8 @@ RUN node test/avatar-assets.js
 RUN node test/full-walkon.js
 # Check that every score 0–180 has a recorded caller and the timing slices are valid.
 RUN node test/numeric-caller.js
+# Confirm a recorded score never speaks twice or overlaps a new-turn reminder.
+RUN node test/caller-dedupe.js
 # Acquire the Creative Claw assets and the two Bible-specified OFL fonts.
 RUN node deployment/fetch-media.js
 ENV NODE_ENV=production
