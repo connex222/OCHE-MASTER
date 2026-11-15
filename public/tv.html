@@ -340,6 +340,15 @@ const Sound = (() => {
         await optional[key];
       })
     ]);
+    // Preload the most common new studio number calls after the essential
+    // launch audio has loaded. This does not delay the TV lobby or first throw.
+    const studioScores = [12, 18, 20, 24, 26, 32, 36, 40, 45, 50, 57, 60, 80, 81, 85, 95, 100, 120, 121, 125, 140, 150, 160, 170];
+    async function warmNumberCalls() {
+      for (let i = 0; i < studioScores.length; i += 6) {
+        await Promise.all(studioScores.slice(i, i + 6).map(n => loadOptional('caller/' + n)));
+      }
+    }
+    void warmNumberCalls();
   }
   async function loadOptional(path) {
     if (!ctx) return null;

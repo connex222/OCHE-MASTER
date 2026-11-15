@@ -47,7 +47,32 @@ const caller = {
   'walkon_the_shark.mp3':'49694a7c-0b9e-485b-814b-39d82237a023.mp3',
   'walkon_bullseye_brenda.mp3':'7b2db7f4-1b7c-4903-9fd3-782e16a80634.mp3',
   'walkon_treble_tap_tina.mp3':'84816537-c8ce-445b-8577-c483ee55b57f.mp3',
-  'walkon_dinner_lady.mp3':'bf170e48-0bef-42a9-8377-66a51df1da43.mp3'
+  'walkon_dinner_lady.mp3':'bf170e48-0bef-42a9-8377-66a51df1da43.mp3',
+  // OCHE number pack 1: Creative Claw ElevenLabs v4, matching the existing walk-on caller.
+  '12.mp3':'11c392d1-f71f-40f2-ba36-00505401c066.mp3',
+  '18.mp3':'67ce448a-06c2-458f-8db2-28fdff735a9b.mp3',
+  '20.mp3':'087b8822-554c-4c8f-bb87-fc3c4574ff07.mp3',
+  '24.mp3':'f8a9ed71-4f6e-46e1-bbef-0b68abc389d8.mp3',
+  '26.mp3':'6c616a19-89d9-494c-a470-9ff1e0edb687.mp3',
+  '32.mp3':'e9cc4dd1-7613-4dd7-a58a-37403ecba32c.mp3',
+  '36.mp3':'35d9772d-03ec-4b8c-a85d-d240c19c8f0e.mp3',
+  '40.mp3':'83725212-9187-45dd-8370-5bf2887326f4.mp3',
+  '45.mp3':'2f573f86-d195-4373-a270-c3d51c93bdcd.mp3',
+  '50.mp3':'b99e5ce9-a119-46b6-88c1-5e08b0039098.mp3',
+  '57.mp3':'01cda730-b2f6-47b4-8fd5-e66b41ea739a.mp3',
+  '60.mp3':'192a94a2-434e-40f8-b33a-2bc650f8e1e8.mp3',
+  '80.mp3':'e22be09f-9b3c-4558-9dff-ea96d75bf73b.mp3',
+  '81.mp3':'04038276-abf8-4ad6-937e-c988b4a4e825.mp3',
+  '85.mp3':'3182dc49-a2b4-4e25-8522-ce60af3c5933.mp3',
+  '95.mp3':'7df7303e-cda7-4948-b315-5c7f54876012.mp3',
+  '100.mp3':'e30970d5-7936-49a5-b8e6-0e8ae344bf34.mp3',
+  '120.mp3':'1488d86b-e354-4945-8425-90eb1178dc6e.mp3',
+  '121.mp3':'e8b04b91-02c9-4bf7-b38c-a6bac50ca913.mp3',
+  '125.mp3':'4f6d74f1-154e-43ff-b8b9-8f1494de9d08.mp3',
+  '140.mp3':'df25429c-8281-4a8e-96b5-0808d24199a3.mp3',
+  '150.mp3':'cece8fd2-2e04-475f-82f3-38bf6b1071bd.mp3',
+  '160.mp3':'a54f0e5e-7e50-4248-bad7-30a088746c7c.mp3',
+  '170.mp3':'fd7e5b38-53f7-4d39-8e83-35ca5718897a.mp3'
 };
 async function get(url, tries=3, headers={}) {
   for (let n=0;n<tries;n++) {
