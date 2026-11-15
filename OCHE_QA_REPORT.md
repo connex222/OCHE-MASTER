@@ -114,3 +114,20 @@ Dynamic player names and phrases such as “you require ...” still use the bro
 - Added `node test/caller-dedupe.js` to Render Docker release gates. **11 checks passed**, including a single 100 call without simultaneous browser speech, a second 100 in a later legitimate visit, shared number-reel playback, following checkout prompts, cancelled late reminders and replaced TV muting.
 - The successful deployment `c0b9f8d861411d138c6c298b616c84c04b8d3a82` reached **live** at 21:02 UTC. Rule modules, physics, avatar images and number recordings were not changed.
 - Physical-TV acceptance remains outstanding: listen to consecutive 100 visits and a 100 score followed by a 100 checkout requirement, ideally on the exact device/browser setup that showed the original issue. Distinguish a second TV tab from a second spoken `require` prompt if the problem persists.
+
+## 15 November 2026 — calibration and interrupted-input recovery
+
+- Fixed a phone lifecycle fault: when a new game phase arrived while the calibration panel was open, its sheet was hidden **before** `Calib.close()` was called. The closure check then failed, leaving `Motion.calibrating` or `Swipe.calibrating` active and potentially swallowing real throws.
+- Calibration is now closed and gestures reset **before** hiding a sheet when a round/game phase changes.
+- Socket disconnection, phone/background transitions and replacement by another tab safely cancel held motion/swipe gestures. A disconnected WebSocket can never submit a throw. The UI additionally waits for the server's fresh `welcome` before enabling throwing after reconnection.
+- Swipe calibration tracks the primary pointer ID and ignores another finger's touch events. Motion calibration refuses invalid values or a fourth throw while its success banner is still visible; the three-sample median remains unchanged.
+- Added the executable `node test/input-recovery.js` release gate: six tests verifying phase-transition ordering, cleanup, valid median, closure, reconnection input gating and single-finger capture. All six tests passed in Render.
+- **Production deployment:** `09835a5fac14985deb358967784e0861afed653e` confirmed **live** on 15 November 2026.
+- Existing throwing physics, difficulty parameters, mode rules, score caller recordings, twelve avatars and QR joining are unchanged.
+
+### Remaining real-device sign-off
+
+- Verify calibration can be interrupted by starting a game, locking/unlocking a phone, and brief network loss without trapping the next throw.
+- Test iPhone Safari motion permissions and Android Chrome motion calibration on the actual phones used at games night.
+- Verify swipe release accuracy with real touches, especially fast gestures and two-finger interruptions.
+- Complete three-player Cricket and four-player Killer matches with authentic players before claiming full AAA acceptance.
