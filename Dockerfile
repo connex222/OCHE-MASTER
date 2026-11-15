@@ -19,6 +19,8 @@ RUN node test/navigation-smoke.js
 RUN node test/avatar-walkon.js
 # Verify the 12 uploaded transparent portraits exactly match the new Bible.
 RUN node test/avatar-assets.js
+# Exercise every walk-on without skipping, bull-off handover and rematch flow.
+RUN node test/full-walkon.js
 # Acquire the Creative Claw assets and the two Bible-specified OFL fonts.
 RUN node deployment/fetch-media.js
 ENV NODE_ENV=production
