@@ -90,6 +90,38 @@ Paste each prompt as written. Ask for the exact size each time.
 2. Render redeploys automatically. Refresh the TV.
 3. If a stuck dart floats off its landing spot, the tip is not at (256, 480). Move the dart in an image editor, or ask ChatGPT to regenerate with that instruction.
 
+## 3b. Player avatars
+
+Twelve cartoon characters. Each player picks one on their phone in the lobby; no two players can have the same one. Players who don't pick get a random free character.
+
+**Files go in `public/assets/img/avatars/`.** Full length, 1024 × 1536, transparent PNG, feet near the bottom, head about 5% from the top. Until a file exists, the game draws a simple cartoon stand-in in the player's colour.
+
+| File | Character | Nickname |
+|---|---|---|
+| `avatar_01_big_kev.png` | Kevin Kowalski | Big Kev the Kebab |
+| `avatar_02_bounce_out_barry.png` | Barry Braithwaite | Bounce-Out |
+| `avatar_03_double_trouble.png` | Derek Dobbs | Double Trouble |
+| `avatar_04_the_mullet.png` | Malcolm McGinty | The Mullet |
+| `avatar_05_wobbly_wayne.png` | Wayne Wainwright | Wobbly |
+| `avatar_06_sir_arrows.png` | Stanley Ollerenshaw | Sir Arrows |
+| `avatar_07_the_gladiator.png` | Gary Grimshaw | The Gladiator |
+| `avatar_08_nigel_bust.png` | Nigel Bottomley | Bust |
+| `avatar_09_the_shark.png` | Sharon Shufflebottom | The Shark |
+| `avatar_10_bullseye_brenda.png` | Brenda Bagshaw | Bullseye |
+| `avatar_11_treble_tap_tina.png` | Tina Tattersall | Treble Tap |
+| `avatar_12_dinner_lady.png` | Doreen Duckworth | The Dinner Lady |
+
+Names, nicknames, taglines and the caller's walk-on line live in `lib/avatars.js`. Edit them there.
+
+**Where avatars appear:**
+- Phone lobby: "Your character" card and the picker grid
+- TV lobby: next to each player's name
+- TV scoreboard: a head-and-shoulders crop (the top of the full-length image)
+- Walk-ons: full screen, before every match
+- Game over: the winner's full figure above the stats
+
+**Walk-ons:** "Let's play darts!", then each player in turn: their character slides in, nickname in huge letters, tagline, "Played by Shaun", a sting, a cheer, and the caller announcing them. About 4 seconds each. The captain can skip them from their phone, and they can be switched off in the game setup.
+
 ## 4. Fonts
 
 ChatGPT can't make fonts. Two free fonts (SIL Open Font Licence, safe to bundle) give the intended look:
@@ -124,6 +156,7 @@ All files go in `public/assets/sfx/` as **MP3**. Every file is optional: missing
 | `crowd_applause.mp3` | 3 s | Warm sustained applause from a pub crowd for a match win, indoor |
 | `ui_join.mp3` | 0.4 s | Friendly two-note wooden marimba blip, player joined, soft |
 | `ui_turn.mp3` | 0.6 s | Gentle rising two-note chime, your turn, warm and unobtrusive |
+| `walkon_sting.mp3` | 1.5 s | Short punchy brass and drum hit for a darts player walking on stage, crowd-pleasing, ends cleanly |
 | `sting_win.mp3` | 2.5 s | Short triumphant brass fanfare in a British sports television style, ends cleanly |
 | `ambience_pub.mp3` | 60 s loop | Background ambience of a cosy British pub during a game: low murmur of chatter, glasses clinking, no music, no clear words, loops seamlessly |
 | `music_lobby.mp3` | 60–90 s loop | Upbeat retro British sports television theme, brass and funky bass, 1980s darts broadcast feel, instrumental, loops seamlessly |
@@ -145,6 +178,21 @@ Files go in `public/assets/sfx/caller/`. Any missing clip is spoken by the brows
 | `killer.mp3` | "Killer!" |
 | `gameshot_leg.mp3` | "Game shot, and the leg!" |
 | `gameshot_match.mp3` | "Game shot, and the match!" |
+| `letsplay.mp3` | "Ladies and gentlemen... let's play darts!" |
+| `walkon_big_kev.mp3` | "Big Kev... the Kebab!" |
+| `walkon_bounce_out_barry.mp3` | "Barry... Bounce-Out... Braithwaite!" |
+| `walkon_double_trouble.mp3` | "Derek... Double Trouble... Dobbs!" |
+| `walkon_the_mullet.mp3` | "Malcolm... The Mullet... McGinty!" |
+| `walkon_wobbly_wayne.mp3` | "Wayne... Wobbly... Wainwright!" |
+| `walkon_sir_arrows.mp3` | "Stanley... Sir Arrows... Ollerenshaw!" |
+| `walkon_the_gladiator.mp3` | "Gary... The Gladiator... Grimshaw!" |
+| `walkon_nigel_bust.mp3` | "Nigel... Bust... Bottomley!" |
+| `walkon_the_shark.mp3` | "Sharon... The Shark... Shufflebottom!" |
+| `walkon_bullseye_brenda.mp3` | "Brenda... Bullseye... Bagshaw!" |
+| `walkon_treble_tap_tina.mp3` | "Tina... Treble Tap... Tattersall!" |
+| `walkon_dinner_lady.mp3` | "Doreen... The Dinner Lady... Duckworth!" |
+
+Walk-on clips should be big and theatrical, with long drawn-out pauses, like a boxing announcer. Without a clip, the built-in voice says "Playing for Shaun. Big Kev, the Kebab!".
 
 Lines with player names ("Sue, you require forty") always use the built-in voice, because names change every game. Recording the 181 number clips is optional; start with `180`, `gameon`, `gameshot_leg`, `gameshot_match` for the biggest impact.
 
@@ -154,8 +202,8 @@ Lines with player names ("Sue, you require forty") always use the built-in voice
 
 | Device | Screens |
 |---|---|
-| TV (`/tv`) | Start splash, lobby (code + players + chosen game), game (board + chalkboard scorer), game over (stats table) |
-| Phone (`/phone`) | Join, choose control, lobby (captain picks game), waiting, motion throw, swipe throw, game over, settings, captain tools, calibration |
+| TV (`/tv`) | Start splash, lobby (code + players + chosen game), walk-ons, game (board + chalkboard scorer), game over (stats table) |
+| Phone (`/phone`) | Join, choose control, lobby (character picker, captain picks game), waiting (incl. walk-ons), motion throw, swipe throw, game over, settings, captain tools, calibration |
 
 ### Turn flow
 
@@ -243,8 +291,9 @@ All modes support single game or best of 3 / 5, and an optional bull-off for thr
 ## 7. Quality checklist before calling it AAA
 
 - [ ] Every image in section 3 delivered and anchors checked on the TV
+- [ ] All 12 avatars delivered, same scale, transparent, checked on the walk-on screen
 - [ ] Fonts in place
-- [ ] All 18 sound files, levels balanced against the caller
+- [ ] All 19 sound files, levels balanced against the caller
 - [ ] Caller clips: at least `180`, `gameon`, `gameshot_leg`, `gameshot_match`
 - [ ] Played on an iPhone (Safari) and an Android (Chrome) over https, both control types
 - [ ] Every player calibrated, throws feel fair at Normal
@@ -259,4 +308,4 @@ All modes support single game or best of 3 / 5, and an optional bull-off for thr
 - Darts deflecting off darts already in the board
 - More modes: Bob's 27, Halve It, Baseball, Golf
 - Per-player lifetime stats saved on each phone
-- Walk-on music per player
+- Walk-on music per character
