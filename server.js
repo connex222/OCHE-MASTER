@@ -233,6 +233,8 @@ function nextWalkon(room, index) {
 function startMatch(room) {
   if (!room.game) return;
   room.game.walkonIndex = -1;
+  // The introduction is over. Re-arm the first official throw, including bull-offs.
+  room.game.turnPhase = 'aim';
   broadcast(room, { t: 'gameStart', title: titleFor(room.config) });
   const order = room.game.order;
   if (room.config.bullOff && order.length > 1) {
