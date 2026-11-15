@@ -7,6 +7,8 @@ RUN npm ci --omit=dev
 COPY . .
 # Fast, deterministic Bible rules regression checks: no GitHub Actions minutes needed.
 RUN node test/bible-regression.js
+# Exercise multiplayer over real WebSockets before this image can go live.
+RUN npm test
 # Acquire the Creative Claw assets and the two Bible-specified OFL fonts.
 RUN node deployment/fetch-media.js
 ENV NODE_ENV=production
