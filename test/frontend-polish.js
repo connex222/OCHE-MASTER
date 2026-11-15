@@ -95,7 +95,8 @@ assert.equal(slots.avatarPicked.writes,2);
 console.log('PASS frontend: avatar gallery resists repeated redraws but responds to selection changes');
 assert.match(tv,/gameOnVoiceUntil = performance\.now\(\) \+ 1600/);
 assert.match(tv,/clearTimeout\(scheduledTurnCall\)/);
-assert.match(tv,/S\.game\.currentId === m\.id/);
+assert.match(tv,/S\.game\.currentId !== id/);
+assert.match(tv,/queueTurnAnnouncement\(m\.id, announcement, delay\)/);
 assert.match(tv,/Caller\.cancel\(\);\s*\$\('walkonOverlay'\)/);
 console.log('PASS frontend: caller starts "Game on" first and discards stale turn calls');
 
