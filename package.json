@@ -1,0 +1,14 @@
+{
+  "name": "oche",
+  "version": "1.0.0",
+  "description": "OCHE - TV + phone party darts. The TV is the board, your phone is the dart.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/simulate.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "UNLICENSED",
+  "private": true
+}

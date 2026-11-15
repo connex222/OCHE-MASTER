@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCHE</title>
+<style>
+@font-face { font-family: 'OcheDisplay'; src: url('/assets/fonts/display.woff2') format('woff2'); font-display: swap; }
+* { box-sizing: border-box; margin: 0; }
+body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 24px;
+  background: radial-gradient(ellipse at 50% 35%, #2a1d12, #140E0A 70%); color: #EEEDE6; font-family: system-ui, sans-serif; text-align: center; }
+h1 { font: 900 clamp(64px, 16vw, 180px)/1 'OcheDisplay', 'Bahnschrift', Impact, sans-serif; letter-spacing: .08em; }
+p { color: #A8B1A9; font-size: 18px; max-width: 34ch; line-height: 1.45; }
+nav { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+a { display: block; min-width: 240px; padding: 20px 28px; border-radius: 14px; text-decoration: none; font: 800 24px 'OcheDisplay', 'Bahnschrift', sans-serif; }
+a.tv { background: #D4A73A; color: #1B1206; }
+a.ph { border: 3px solid #4A5853; color: #EEEDE6; }
+a:focus-visible { outline: 4px solid #fff; outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>OCHE</h1>
+<p>Open the board on the TV or laptop. Everyone else uses their phone as the dart.</p>
+<nav>
+  <a class="tv" href="/tv">Open the board</a>
+  <a class="ph" href="/phone">Use my phone</a>
+</nav>
+</body>
+</html>

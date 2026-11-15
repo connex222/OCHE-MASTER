@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#161D1B">
+<title>OCHE: Your dart</title>
+<style>
+@font-face { font-family: 'OcheDisplay'; src: url('/assets/fonts/display.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'OcheChalk'; src: url('/assets/fonts/chalk.woff2') format('woff2'); font-display: swap; }
+:root {
+  --display: 'OcheDisplay', 'Bahnschrift', 'DIN Condensed', 'Roboto Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --bg: #161D1B; --panel: #222C29; --line: #3A4844;
+  --chalk: #F4F3EC; --dim: #AEB7B0;
+  --brass: #E0B341; --red: #E5384D; --green: #2FA463;
+  --pc: #E0B341;
+  --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--chalk); font-family: var(--body); overscroll-behavior: none; }
+body { -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.scr { display: none; position: fixed; inset: 0; padding: calc(16px + var(--safe-t)) 18px calc(16px + var(--safe-b)); overflow-y: auto; flex-direction: column; gap: 14px; }
+.scr.on { display: flex; }
+h1 { font-family: var(--display); font-weight: 900; font-size: 64px; letter-spacing: .06em; line-height: 1; }
+h2 { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1.1; }
+h3 { font-family: var(--display); font-weight: 700; font-size: 20px; }
+p, li { font-size: 17px; line-height: 1.45; }
+.dim { color: var(--dim); }
+label { font-size: 15px; color: var(--dim); display: block; margin-bottom: 6px; }
+input {
+  width: 100%; font: 700 24px var(--body); padding: 14px 16px; border-radius: 12px; border: 3px solid var(--line);
+  background: #0E1312; color: var(--chalk); outline: none;
+}
+input:focus { border-color: var(--brass); }
+#code { text-transform: uppercase; letter-spacing: .3em; font-family: var(--display); font-size: 40px; text-align: center; }
+.btn {
+  display: block; width: 100%; font: 800 22px var(--display); letter-spacing: .02em; padding: 18px; border-radius: 14px;
+  border: 3px solid transparent; background: var(--brass); color: #1B1206; cursor: pointer; text-align: center;
+}
+.btn.ghost { background: transparent; color: var(--chalk); border-color: var(--line); }
+.btn.danger { background: transparent; color: #FF8794; border-color: #7A2A33; }
+.btn:disabled { opacity: .4; }
+.btn:focus-visible, .seg button:focus-visible, .mode:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.err { color: #FF8794; font-weight: 700; min-height: 1.4em; font-size: 16px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 16px; }
+.choice { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 18px; border-radius: 16px; border: 3px solid var(--line); background: var(--panel); color: var(--chalk); font: inherit; cursor: pointer; }
+.choice b { font: 800 22px var(--display); }
+.choice span { font-size: 16px; color: var(--dim); line-height: 1.4; }
+.choice.sel { border-color: var(--brass); }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { flex: 1 1 0; min-width: 70px; font: 700 17px var(--body); padding: 12px 8px; border-radius: 10px; border: 2px solid var(--line); background: #0E1312; color: var(--chalk); cursor: pointer; }
+.seg button.sel { background: var(--chalk); color: #111; border-color: var(--chalk); }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mode { font: 700 17px var(--body); padding: 14px 10px; border-radius: 12px; border: 2px solid var(--line); background: #0E1312; color: var(--chalk); cursor: pointer; text-align: center; }
+.mode.sel { border-color: var(--brass); background: #2C2615; }
+.mode:disabled { opacity: .35; }
+.me { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+.me i { width: 18px; height: 18px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 10px var(--pc); flex: none; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.iconbtn { font: 700 15px var(--body); padding: 10px 14px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); color: var(--chalk); cursor: pointer; }
+.big { font-family: var(--display); font-weight: 900; font-size: 56px; line-height: 1; }
+.hint { font-size: 18px; line-height: 1.35; color: var(--chalk); }
+.darts { display: flex; gap: 8px; }
+.darts i { width: 14px; height: 30px; border-radius: 4px; background: var(--pc); }
+.darts i.used { background: transparent; border: 2px solid var(--line); }
+.feedback { font: 800 26px var(--display); min-height: 1.2em; text-align: center; }
+.feedback small { display: block; font: 600 16px var(--body); color: var(--dim); margin-top: 4px; }
+
+/* motion throw */
+#pad {
+  flex: 1; min-height: 240px; border-radius: 24px; border: 4px dashed var(--line); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 10px; padding: 18px; touch-action: none; transition: background .15s, border-color .15s;
+}
+#pad b { font: 900 34px var(--display); }
+#pad span { font-size: 17px; color: var(--dim); line-height: 1.4; }
+#pad.grip { border-style: solid; border-color: var(--pc); background: color-mix(in srgb, var(--pc) 18%, transparent); }
+#pad.wait { opacity: .5; }
+
+/* swipe throw */
+#swipe { padding: calc(10px + var(--safe-t)) 0 var(--safe-b); gap: 0; overflow: hidden; touch-action: none; }
+#swipeTop { padding: 0 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#swipeCanvas { flex: 1; width: 100%; display: block; touch-action: none; }
+#swipeMsg { position: absolute; left: 0; right: 0; bottom: calc(12px + var(--safe-b)); text-align: center; font-size: 16px; color: var(--dim); pointer-events: none; }
+
+.sheet { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: flex-end; z-index: 20; }
+.sheet.on { display: flex; }
+.sheet > div { width: 100%; max-height: 88vh; overflow-y: auto; background: var(--bg); border-top: 3px solid var(--line); border-radius: 20px 20px 0 0; padding: 20px 18px calc(20px + var(--safe-b)); display: flex; flex-direction: column; gap: 14px; }
+#calib { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: none; flex-direction: column; gap: 16px; padding: calc(20px + var(--safe-t)) 18px calc(20px + var(--safe-b)); }
+#calib.on { display: flex; }
+#calibPad { flex: 1; border-radius: 24px; border: 4px dashed var(--line); display: flex; align-items: center; justify-content: center; text-align: center; font: 800 26px var(--display); padding: 20px; touch-action: none; }
+#calibPad.grip { border-style: solid; border-color: var(--brass); }
+.ticks { display: flex; gap: 10px; justify-content: center; }
+.ticks i { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--line); }
+.ticks i.on { background: var(--brass); border-color: var(--brass); }
+.safety { border-left: 4px solid var(--red); padding: 8px 12px; background: rgba(229,56,77,.08); border-radius: 8px; font-size: 15px; line-height: 1.4; }
+.rowlist { display: flex; flex-direction: column; gap: 6px; }
+.rowlist div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--panel); font-size: 17px; }
+.rowlist div.cur { outline: 2px solid var(--pc); }
+.rowlist b { font-family: var(--display); font-size: 22px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- Join -->
+<section class="scr" id="scrJoin">
+  <h1>OCHE</h1>
+  <p class="dim">Your phone is the dart. Enter the code on the TV.</p>
+  <div><label for="code">Game code</label><input id="code" maxlength="4" autocomplete="off" autocapitalize="characters" inputmode="text"></div>
+  <div><label for="name">Your name</label><input id="name" maxlength="14" autocomplete="nickname"></div>
+  <div class="err" id="joinErr" role="alert"></div>
+  <button class="btn" id="joinBtn" type="button">Join game</button>
+</section>
+
+<!-- Choose control -->
+<section class="scr" id="scrControl">
+  <h2>How do you want to throw?</h2>
+  <button class="choice" id="pickMotion" type="button"><b>Throw with the phone</b><span>Hold your phone like a dart, point it at the TV and flick. The most realistic way to play.</span></button>
+  <button class="choice" id="pickSwipe" type="button"><b>Swipe to throw</b><span>Tap where to aim, then flick the dart up the screen. Best for children, or if you would rather not wave your phone about.</span></button>
+  <div class="safety"><b>Hold on tight.</b> Never let go of your phone when you flick. Use a wrist strap or grip if you have one, and keep clear of other people and the TV.</div>
+  <div class="err" id="controlErr" role="alert"></div>
+</section>
+
+<!-- Lobby -->
+<section class="scr" id="scrLobby">
+  <div class="topbar"><div class="me"><i></i><span class="myName"></span></div><button class="iconbtn" data-open="settings" type="button">Settings</button></div>
+  <div id="captainSetup" hidden>
+    <h2>Pick the game</h2>
+    <div class="modes" id="modeList"></div>
+    <p class="dim" id="modeRules"></p>
+    <div id="modeOpts" style="display:flex;flex-direction:column;gap:12px"></div>
+    <div class="err" id="startErr" role="alert"></div>
+    <button class="btn" id="startBtn" type="button">Start game</button>
+  </div>
+  <div id="guestWait" hidden class="card">
+    <h3 id="guestTitle"></h3>
+    <p class="dim" id="guestRules" style="margin-top:6px"></p>
+    <p style="margin-top:10px" id="guestCap"></p>
+  </div>
+  <div class="card">
+    <h3>Players</h3>
+    <div class="rowlist" id="lobbyPlayers" style="margin-top:8px"></div>
+  </div>
+  <button class="btn ghost" id="calibBtnLobby" type="button">Practise and calibrate my throw</button>
+</section>
+
+<!-- Waiting -->
+<section class="scr" id="scrWait">
+  <div class="topbar"><div class="me"><i></i><span class="myName"></span></div><div style="display:flex;gap:8px"><button class="iconbtn capOnly" data-open="capMenu" type="button" hidden>Captain</button><button class="iconbtn" data-open="settings" type="button">Settings</button></div></div>
+  <div class="card"><p class="dim" id="waitWho"></p><p class="hint" id="waitMsg" style="margin-top:6px"></p></div>
+  <div class="feedback" id="waitFeedback"></div>
+  <div class="rowlist" id="waitRows"></div>
+</section>
+
+<!-- Motion turn -->
+<section class="scr" id="scrMotion">
+  <div class="topbar"><div class="darts" id="motionDarts"></div><div style="display:flex;gap:8px"><button class="iconbtn capOnly" data-open="capMenu" type="button" hidden>Captain</button><button class="iconbtn" id="recentre" type="button">Recentre</button></div></div>
+  <div class="hint" id="motionHint"></div>
+  <div id="pad" role="button" aria-label="Hold here to grip the dart"><b>Your throw</b><span>Point the top of your phone at the board. Hold your thumb here, then flick forward. Don't let go of the phone.</span></div>
+  <div class="feedback" id="motionFeedback"></div>
+</section>
+
+<!-- Swipe turn -->
+<section class="scr" id="scrSwipe">
+  <div id="swipeTop"><div class="darts" id="swipeDarts"></div><div class="hint" id="swipeHint" style="font-size:15px;flex:1;text-align:right"></div><button class="iconbtn capOnly" data-open="capMenu" type="button" hidden>Captain</button></div>
+  <canvas id="swipeCanvas"></canvas>
+  <div id="swipeMsg">Tap the board to aim, then flick the dart up</div>
+</section>
+
+<!-- Game over -->
+<section class="scr" id="scrOver">
+  <div class="me"><i></i><span class="myName"></span></div>
+  <h2 id="overTitle"></h2>
+  <p class="dim" id="overSub"></p>
+  <div class="rowlist" id="overRows"></div>
+  <div id="overCap" hidden style="display:flex;flex-direction:column;gap:10px">
+    <button class="btn" id="rematchBtn" type="button">Rematch</button>
+    <button class="btn ghost" id="newGameBtn" type="button">Pick a new game</button>
+  </div>
+  <p class="dim" id="overGuest"></p>
+</section>
+
+<!-- Settings sheet -->
+<div class="sheet" id="settings"><div>
+  <h2>Settings</h2>
+  <div><label>Difficulty</label><div class="seg" id="segDiff"><button data-v="easy" type="button">Easy</button><button data-v="normal" type="button">Normal</button><button data-v="pro" type="button">Pro</button></div></div>
+  <p class="dim" style="font-size:15px">Easy is forgiving, good for children. Pro spreads your darts more.</p>
+  <div><label>How you throw</label><div class="seg" id="segControl"><button data-v="motion" type="button">Phone</button><button data-v="swipe" type="button">Swipe</button></div></div>
+  <div id="sensBox"><label>Aim speed</label><div class="seg" id="segSens"><button data-v="5" type="button">Slow</button><button data-v="7" type="button">Medium</button><button data-v="10" type="button">Fast</button></div></div>
+  <button class="btn ghost" id="calibBtn" type="button">Calibrate my throw</button>
+  <button class="btn ghost" id="leaveBtn" type="button">Leave game</button>
+  <button class="btn" data-close type="button">Done</button>
+</div></div>
+
+<!-- Captain sheet -->
+<div class="sheet" id="capMenu"><div>
+  <h2>Captain</h2>
+  <button class="btn ghost" id="undoBtn" type="button">Undo last dart</button>
+  <p class="dim" style="font-size:15px">For a dart that went off by accident.</p>
+  <button class="btn ghost" id="skipBtn" type="button">Skip this turn</button>
+  <button class="btn danger" id="endBtn" type="button">End the game</button>
+  <button class="btn" data-close type="button">Close</button>
+</div></div>
+
+<!-- Calibration -->
+<div id="calib" role="dialog" aria-labelledby="calibTitle">
+  <h2 id="calibTitle">Calibrate your throw</h2>
+  <p id="calibText"></p>
+  <div class="ticks"><i></i><i></i><i></i></div>
+  <div id="calibPad"></div>
+  <div class="feedback" id="calibFeedback"></div>
+  <button class="btn ghost" id="calibCancel" type="button">Cancel</button>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   Shared geometry (must match lib/board.js)
+   ===================================================================== */
+const SEG = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
+const B = { BULL: 6.35, OB: 15.9, TI: 99, TO: 107, DI: 162, DO: 170, NUM: 190, SUR: 228 };
+const AIM_LIMIT = 250;
+
+/* =====================================================================
+   Local settings
+   ===================================================================== */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('oche.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('oche.' + k, JSON.stringify(v)); } catch { /* private mode */ } }
+};
+const DEFAULT_IDEAL = { motion: 24, swipe: 1.9 };
+let pid = store.get('pid', null);
+if (!pid) { pid = (crypto.randomUUID ? crypto.randomUUID() : 'p' + Math.random().toString(36).slice(2) + Date.now().toString(36)); store.set('pid', pid); }
+let control = store.get('control', null);
+let difficulty = store.get('difficulty', 'normal');
+let sens = store.get('sens', 7);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch { /* unsupported */ } };
+
+/* =====================================================================
+   Networking
+   ===================================================================== */
+let ws = null, S = null, me = null, catalog = [], generic = [], joined = false, code = '', replaced = false;
+let awaiting = false, awaitTimer = 0;
+
+function connect() {
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  ws.onopen = () => { if (code) sendJoin(); };
+  ws.onmessage = e => { try { onMessage(JSON.parse(e.data)); } catch (err) { console.error(err); } };
+  ws.onclose = () => { if (!replaced) setTimeout(connect, 1200); };
+}
+function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+function sendJoin() { send({ t: 'join', code, name: store.get('name', ''), playerId: pid, difficulty, control: control || 'motion' }); }
+
+function onMessage(m) {
+  switch (m.t) {
+    case 'welcome':
+      joined = true; me = { id: m.id, colour: m.colour }; catalog = m.catalog; generic = m.generic;
+      store.set('room', code);
+      document.documentElement.style.setProperty('--pc', m.colour);
+      $('joinErr').textContent = '';
+      wakeLock();
+      route();
+      break;
+    case 'error':
+      if (!joined) { $('joinErr').textContent = m.message; code = ''; store.set('room', ''); }
+      else if (m.code === 'players') $('startErr').textContent = m.message;
+      break;
+    case 'state': onState(m); break;
+    case 'turn': if (me && m.id === me.id) { buzz([40, 60, 40]); feedback(''); } break;
+    case 'dart':
+      if (me && m.id === me.id) {
+        clearAwait();
+        const label = m.dart.bounceOut ? 'Bounce out' : m.dart.label === 'MISS' ? (m.dart.reached ? 'Miss' : 'Fell short') : m.dart.label;
+        feedback(m.bulloff ? m.text : label, m.phys.feedback);
+        if (m.bust) buzz([80, 60, 80]);
+      }
+      break;
+    case 'visit':
+      if (me && m.id === me.id && m.total === 180) buzz([60, 40, 60, 40, 200]);
+      break;
+    case 'legEnd': if (me && m.winnerId === me.id) buzz([100, 50, 100, 50, 300]); break;
+    case 'replaced':
+      replaced = true;
+      document.body.innerHTML = '<p style="padding:30px;font-size:20px">You opened this game in another tab. Use that one.</p>';
+      break;
+  }
+}
+
+function onState(m) {
+  S = m;
+  const mine = S.players.find(p => p.id === (me && me.id));
+  if (mine) {
+    document.documentElement.style.setProperty('--pc', mine.colour);
+    document.querySelectorAll('.myName').forEach(el => { el.textContent = mine.name; });
+  }
+  if (S.game && S.game.turnPhase === 'aim' && awaiting && S.game.currentId !== (me && me.id)) clearAwait();
+  route();
+}
+
+function clearAwait() { awaiting = false; clearTimeout(awaitTimer); }
+function setAwait() { awaiting = true; clearTimeout(awaitTimer); awaitTimer = setTimeout(() => { awaiting = false; route(); }, 3000); }
+
+/* =====================================================================
+   Screens
+   ===================================================================== */
+let screen = '';
+function show(id) {
+  if (screen === id) return;
+  document.querySelectorAll('.scr').forEach(s => s.classList.toggle('on', s.id === id));
+  screen = id;
+  if (id === 'scrSwipe') Swipe.resize();
+}
+
+function isMyTurn() { return !!(S && S.game && me && S.game.currentId === me.id); }
+function canThrow() { return isMyTurn() && S.game.turnPhase === 'aim' && !awaiting; }
+function isCaptain() { return !!(S && me && S.captainId === me.id); }
+
+function route() {
+  if (!joined) return show('scrJoin');
+  if (!control) return show('scrControl');
+  if (!S) return;
+  document.querySelectorAll('.capOnly').forEach(b => { b.hidden = !isCaptain(); });
+  if (S.phase === 'lobby') { renderLobby(); return show('scrLobby'); }
+  if (S.phase === 'gameOver') { renderOver(); return show('scrOver'); }
+  if ((S.phase === 'playing' || S.phase === 'bulloff') && isMyTurn() && ['aim', 'flight'].includes(S.game.turnPhase)) {
+    renderTurn();
+    return show(control === 'swipe' ? 'scrSwipe' : 'scrMotion');
+  }
+  renderWait();
+  show('scrWait');
+}
+
+function rowsHtml() {
+  const g = S.game;
+  if (!g || !g.view) return '';
+  return g.order.map((id, seat) => {
+    const p = S.players.find(x => x.id === id) || { name: '?', colour: '#888' };
+    const r = g.view.rows[seat];
+    return '<div class="' + (id === g.currentId ? 'cur' : '') + '" style="--pc:' + p.colour + '"><span>' + esc(p.name) + '<br><small class="dim">' + esc(r.sub) + '</small></span><b>' + esc(r.main) + '</b></div>';
+  }).join('');
+}
+
+function renderWait() {
+  const g = S.game;
+  const cur = g && S.players.find(p => p.id === g.currentId);
+  if (S.phase === 'legOver') {
+    const w = S.players.find(p => p.id === g.legWinnerId);
+    $('waitWho').textContent = 'Leg over';
+    $('waitMsg').textContent = (w ? w.name + ' wins the leg. ' : '') + 'Next leg starting.';
+  } else if (S.phase === 'bulloff' && g.turnPhase === 'done') {
+    $('waitWho').textContent = 'Bull-off done';
+    $('waitMsg').textContent = 'Getting the order ready.';
+  } else if (isMyTurn()) {
+    $('waitWho').textContent = 'Your turn';
+    $('waitMsg').textContent = g.turnPhase === 'collect' ? 'Collecting your darts' : 'Get ready';
+  } else {
+    $('waitWho').textContent = cur ? cur.name + ' is throwing' : 'Waiting';
+    $('waitMsg').textContent = 'Watch the TV. Your phone buzzes when it is your turn.';
+  }
+  $('waitRows').innerHTML = rowsHtml();
+}
+
+function renderTurn() {
+  const g = S.game;
+  const left = S.phase === 'bulloff' ? 1 : 3 - g.darts.length;
+  const total = S.phase === 'bulloff' ? 1 : 3;
+  const darts = Array.from({ length: total }, (_, i) => '<i class="' + (i < total - left ? 'used' : '') + '"></i>').join('');
+  $('motionDarts').innerHTML = darts; $('swipeDarts').innerHTML = darts;
+  $('motionHint').textContent = g.hint || '';
+  $('swipeHint').textContent = g.hint || '';
+  $('pad').classList.toggle('wait', !canThrow());
+}
+
+function feedback(text, sub) {
+  const html = esc(text) + (sub ? '<small>' + esc(sub) + '</small>' : '');
+  $('motionFeedback').innerHTML = html;
+  $('waitFeedback').innerHTML = html;
+  Swipe.message(text ? text + (sub ? ': ' + sub : '') : 'Tap the board to aim, then flick the dart up');
+}
+
+/* ---------------- lobby ---------------- */
+let draft = null;
+function renderLobby() {
+  const cap = isCaptain();
+  $('captainSetup').hidden = !cap;
+  $('guestWait').hidden = cap;
+  $('lobbyPlayers').innerHTML = S.players.map(p => '<div style="--pc:' + p.colour + '"><span><i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + p.colour + ';margin-right:8px"></i>' + esc(p.name) + (p.id === S.captainId ? ' <small class="dim">captain</small>' : '') + '</span><small class="dim">' + (p.control === 'swipe' ? 'Swipe' : 'Phone') + ', ' + p.difficulty + (p.online ? '' : ', offline') + '</small></div>').join('');
+  const mode = catalog.find(m => m.id === S.config.mode);
+  if (!cap) {
+    $('guestTitle').textContent = S.title;
+    $('guestRules').textContent = mode ? mode.rules : '';
+    const c = S.players.find(p => p.id === S.captainId);
+    $('guestCap').textContent = c ? 'Waiting for ' + c.name + ' to start.' : '';
+    return;
+  }
+  if (!draft) draft = JSON.parse(JSON.stringify(S.config));
+  const n = S.players.length;
+  $('modeList').innerHTML = catalog.map(m => '<button class="mode' + (m.id === draft.mode ? ' sel' : '') + '" data-mode="' + m.id + '" type="button"' + (n > m.max ? ' disabled' : '') + '>' + esc(m.name) + '</button>').join('');
+  const cur = catalog.find(m => m.id === draft.mode);
+  $('modeRules').textContent = cur ? cur.rules : '';
+  const segs = [];
+  for (const o of cur.options) segs.push(segHtml('opt', o, draft.options[o.key]));
+  for (const o of generic) segs.push(segHtml('gen', o, draft[o.key]));
+  $('modeOpts').innerHTML = segs.join('');
+  const ok = n >= cur.min && n <= cur.max;
+  $('startBtn').disabled = !ok;
+  $('startErr').textContent = ok ? '' : cur.name + ' needs ' + cur.min + (cur.max > cur.min ? ' to ' + cur.max : '') + ' players.';
+}
+function segHtml(kind, o, value) {
+  return '<div><label>' + esc(o.label) + '</label><div class="seg">' + o.choices.map(c =>
+    '<button type="button" class="' + (c.v === value ? 'sel' : '') + '" data-kind="' + kind + '" data-key="' + o.key + '" data-v=\'' + JSON.stringify(c.v) + '\'>' + esc(c.l) + '</button>').join('') + '</div></div>';
+}
+$('modeList').addEventListener('click', e => {
+  const b = e.target.closest('[data-mode]'); if (!b) return;
+  const m = catalog.find(x => x.id === b.dataset.mode);
+  draft.mode = m.id;
+  draft.options = Object.fromEntries(m.options.map(o => [o.key, o.default]));
+  pushSetup();
+});
+$('modeOpts').addEventListener('click', e => {
+  const b = e.target.closest('[data-key]'); if (!b) return;
+  const v = JSON.parse(b.dataset.v);
+  if (b.dataset.kind === 'opt') draft.options[b.dataset.key] = v; else draft[b.dataset.key] = v;
+  pushSetup();
+});
+function pushSetup() { send({ t: 'setup', mode: draft.mode, options: draft.options, legs: draft.legs, bullOff: draft.bullOff }); renderLobby(); }
+$('startBtn').addEventListener('click', () => { send({ t: 'start' }); });
+
+/* ---------------- game over ---------------- */
+function renderOver() {
+  const g = S.game;
+  const w = g && S.players.find(p => p.id === g.winnerId);
+  $('overTitle').textContent = g && g.draw ? 'A draw' : w ? (w.id === me.id ? 'You win!' : w.name + ' wins') : 'Game over';
+  $('overSub').textContent = g ? g.endText : '';
+  $('overRows').innerHTML = g ? g.order.map(id => {
+    const p = S.players.find(x => x.id === id) || { name: '?' }, st = g.stats[id];
+    return '<div><span>' + esc(p.name) + '<br><small class="dim">Best visit ' + st.best + ', 180s ' + st.s180 + '</small></span><b>' + (st.darts ? (st.points / st.darts * 3).toFixed(1) : '0.0') + '</b></div>';
+  }).join('') : '';
+  const cap = isCaptain();
+  $('overCap').hidden = !cap;
+  $('overCap').style.display = cap ? 'flex' : 'none';
+  const c = S.players.find(p => p.id === S.captainId);
+  $('overGuest').textContent = cap ? '' : (c ? c.name + ' chooses what happens next.' : '');
+  draft = null;
+}
+$('rematchBtn').addEventListener('click', () => send({ t: 'again', rematch: true }));
+$('newGameBtn').addEventListener('click', () => send({ t: 'again', rematch: false }));
+
+/* ---------------- join & control ---------------- */
+$('code').value = (new URLSearchParams(location.search).get('code') || store.get('room', '') || '').toUpperCase();
+$('name').value = store.get('name', '');
+$('code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+$('joinBtn').addEventListener('click', () => {
+  const c = $('code').value.trim().toUpperCase(), n = $('name').value.trim();
+  if (c.length !== 4) { $('joinErr').textContent = 'The code is the four letters on the TV.'; return; }
+  if (!n) { $('joinErr').textContent = 'Type your name so everyone knows whose turn it is.'; return; }
+  store.set('name', n);
+  code = c;
+  if (ws && ws.readyState === 1) sendJoin();
+});
+
+$('pickMotion').addEventListener('click', async () => {
+  $('controlErr').textContent = '';
+  const ok = await Motion.enable();
+  if (!ok) { $('controlErr').textContent = Motion.problem; return; }
+  setControl('motion');
+});
+$('pickSwipe').addEventListener('click', () => setControl('swipe'));
+
+function setControl(c) {
+  control = c; store.set('control', c);
+  send({ t: 'settings', control: c });
+  route();
+  syncSettings();
+}
+
+/* ---------------- sheets ---------------- */
+document.addEventListener('click', e => {
+  const o = e.target.closest('[data-open]');
+  if (o) { $(o.dataset.open).classList.add('on'); syncSettings(); return; }
+  if (e.target.closest('[data-close]') || e.target.classList.contains('sheet')) document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on'));
+});
+function syncSettings() {
+  for (const [id, v] of [['segDiff', difficulty], ['segControl', control], ['segSens', String(sens)]]) {
+    $(id).querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.dataset.v === String(v)));
+  }
+  $('sensBox').hidden = control !== 'motion';
+  $('undoBtn').disabled = !(S && S.game && S.game.canUndo);
+}
+$('segDiff').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  difficulty = b.dataset.v; store.set('difficulty', difficulty); send({ t: 'settings', difficulty }); syncSettings();
+});
+$('segControl').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v === 'motion' && !(await Motion.enable())) { alert(Motion.problem); return; }
+  setControl(b.dataset.v);
+});
+$('segSens').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  sens = Number(b.dataset.v); store.set('sens', sens); syncSettings();
+});
+$('leaveBtn').addEventListener('click', () => {
+  send({ t: 'leave' }); store.set('room', ''); code = ''; joined = false; S = null;
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on'));
+  route();
+});
+$('undoBtn').addEventListener('click', () => { send({ t: 'undo' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); });
+$('skipBtn').addEventListener('click', () => { send({ t: 'skip' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); });
+$('endBtn').addEventListener('click', () => {
+  if (confirm('End the game for everyone?')) { send({ t: 'end' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); }
+});
+
+/* =====================================================================
+   MOTION THROW
+   Hold the phone like a TV remote: top edge pointing at the TV, screen up.
+   Turning left/right (rotation about the screen's z axis) moves aim sideways.
+   Tilting the top up/down (rotation about the x axis) moves aim up/down.
+   A throw is a spike in linear acceleration while the thumb grips the pad.
+   ===================================================================== */
+const Motion = (() => {
+  const START = 9;          // m/s^2 that starts a throw capture
+  const MIN_PEAK = 12;      // weaker than this is not a throw
+  const MAX_WINDOW = 320;   // ms
+  const DEAD = 0.8;         // deg/s of rotation ignored (hand tremor)
+  let enabled = false, seen = false, last = 0;
+  let rate = { a: 0, b: 0, g: 0 };
+  let grav = null;
+  const aim = { x: 0, y: 0 };
+  const buf = [];
+  let state = 'idle', gripped = false;
+  let peak = 0, rollPeak = 0, yawSum = 0, t0 = 0, aimStart = null, jitter = 0;
+  const api = { problem: '', onThrow: null, onSoft: null, aim, calibrating: false };
+
+  function aimAt(t) {
+    for (let i = buf.length - 1; i >= 0; i--) if (buf[i].t <= t) return { x: buf[i].x, y: buf[i].y };
+    return { x: aim.x, y: aim.y };
+  }
+  function jitterBetween(a, b) {
+    const pts = buf.filter(p => p.t >= a && p.t <= b);
+    if (pts.length < 3) return 0;
+    const mx = pts.reduce((s, p) => s + p.x, 0) / pts.length, my = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+    return Math.sqrt(pts.reduce((s, p) => s + (p.x - mx) ** 2 + (p.y - my) ** 2, 0) / pts.length);
+  }
+
+  function onMotion(e) {
+    const now = performance.now();
+    const dt = clamp((now - (last || now - 16)) / 1000, 0.004, 0.05);
+    last = now;
+    const rr = e.rotationRate;
+    if (rr && rr.alpha !== null) seen = true;
+    const ra = rr && rr.alpha || 0, rb = rr && rr.beta || 0, rg = rr && rr.gamma || 0;
+    rate.a = rate.a * 0.4 + ra * 0.6; rate.b = rate.b * 0.4 + rb * 0.6; rate.g = rate.g * 0.4 + rg * 0.6;
+
+    if (state !== 'capture') {
+      const ya = Math.abs(rate.a) > DEAD ? rate.a : 0;
+      const pb = Math.abs(rate.b) > DEAD ? rate.b : 0;
+      aim.x = clamp(aim.x - ya * dt * sens, -AIM_LIMIT, AIM_LIMIT);
+      aim.y = clamp(aim.y + pb * dt * sens, -AIM_LIMIT, AIM_LIMIT);
+      buf.push({ t: now, x: aim.x, y: aim.y });
+      while (buf.length && buf[0].t < now - 700) buf.shift();
+    }
+
+    // Linear acceleration (gravity removed).
+    let lx, ly, lz;
+    const a = e.acceleration;
+    if (a && a.x !== null && a.x !== undefined) { lx = a.x; ly = a.y; lz = a.z; }
+    else {
+      const ag = e.accelerationIncludingGravity;
+      if (!ag || ag.x === null) return;
+      if (!grav) grav = { x: ag.x, y: ag.y, z: ag.z };
+      grav.x = grav.x * 0.9 + ag.x * 0.1; grav.y = grav.y * 0.9 + ag.y * 0.1; grav.z = grav.z * 0.9 + ag.z * 0.1;
+      lx = ag.x - grav.x; ly = ag.y - grav.y; lz = ag.z - grav.z;
+    }
+    const mag = Math.hypot(lx, ly, lz);
+
+    if (state === 'armed' && gripped && mag > START) {
+      state = 'capture'; t0 = now; peak = mag; rollPeak = Math.abs(rg); yawSum = 0;
+      aimStart = aimAt(now - 100);
+      jitter = jitterBetween(now - 450, now - 100);
+    } else if (state === 'capture') {
+      peak = Math.max(peak, mag);
+      rollPeak = Math.max(rollPeak, Math.abs(rg));
+      yawSum += ra * dt;
+      const el = now - t0;
+      if (el > MAX_WINDOW || (el > 70 && mag < 4)) finish();
+    }
+  }
+
+  function finish() {
+    if (peak < MIN_PEAK) {
+      state = gripped ? 'armed' : 'idle';
+      if (peak >= 10 && api.onSoft) api.onSoft();
+      return;
+    }
+    const ideal = store.get('ideal.motion', DEFAULT_IDEAL.motion);
+    const result = {
+      aim: { x: aimStart.x, y: aimStart.y },
+      power: peak / ideal,
+      stability: clamp(rollPeak / 450 + jitter / 14, 0, 1),
+      lateral: clamp(-yawSum * 3, -60, 60),
+      peak,
+      input: 'motion'
+    };
+    state = 'cooldown';
+    buzz(50);
+    if (api.onThrow) api.onThrow(result);
+  }
+
+  api.enable = async function () {
+    if (enabled && seen) return true;
+    if (!window.isSecureContext) { api.problem = 'Phone throwing needs a secure (https) connection. Use swipe for now, or open the game from its https web address.'; return false; }
+    if (typeof DeviceMotionEvent === 'undefined') { api.problem = 'This phone does not report motion. Use swipe to throw.'; return false; }
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      try {
+        const r = await DeviceMotionEvent.requestPermission();
+        if (r !== 'granted') { api.problem = 'Motion access was refused. On iPhone: close and reopen Safari, then tap Allow when asked. Or use swipe.'; return false; }
+      } catch { api.problem = 'Could not ask for motion access. Use swipe to throw.'; return false; }
+    }
+    if (!enabled) { addEventListener('devicemotion', onMotion); enabled = true; }
+    await new Promise(r => setTimeout(r, 900));
+    if (!seen) { api.problem = 'No motion sensor readings came through. Use swipe to throw.'; return false; }
+    return true;
+  };
+  api.grip = function (on) {
+    gripped = on;
+    if (on && (state === 'idle')) state = 'armed';
+    if (!on && state === 'armed') state = 'idle';
+  };
+  api.reset = function () { state = gripped ? 'armed' : 'idle'; };
+  api.recentre = function () { aim.x = 0; aim.y = 0; buf.length = 0; };
+  api.get = () => ({ x: aim.x, y: aim.y });
+  return api;
+})();
+
+/* Motion pad */
+const pad = $('pad');
+function padDown(e) {
+  e.preventDefault();
+  if (!canThrow()) return;
+  pad.classList.add('grip');
+  pad.querySelector('b').textContent = 'Gripped';
+  pad.querySelector('span').textContent = 'Aim, then flick forward. Keep hold of the phone.';
+  buzz(20);
+  Motion.reset();
+  Motion.grip(true);
+}
+function padUp(e) {
+  if (e) e.preventDefault();
+  pad.classList.remove('grip');
+  pad.querySelector('b').textContent = 'Your throw';
+  pad.querySelector('span').textContent = 'Point the top of your phone at the board. Hold your thumb here, then flick forward. Don\'t let go of the phone.';
+  Motion.grip(false);
+}
+pad.addEventListener('pointerdown', padDown);
+pad.addEventListener('pointerup', padUp);
+pad.addEventListener('pointercancel', padUp);
+pad.addEventListener('contextmenu', e => e.preventDefault());
+$('recentre').addEventListener('click', () => { Motion.recentre(); feedback('Recentred', 'Crosshair is on the bullseye'); });
+
+Motion.onSoft = () => { if (!Motion.calibrating) feedback('Flick harder', 'That was too gentle to count'); };
+Motion.onThrow = r => {
+  if (Motion.calibrating) return Calib.record(r.peak);
+  if (!canThrow()) { Motion.reset(); return; }
+  send({ t: 'throw', aim: r.aim, power: r.power, stability: r.stability, lateral: r.lateral, input: 'motion' });
+  setAwait();
+  padUp();
+  feedback('Thrown');
+  route();
+};
+
+/* =====================================================================
+   SWIPE THROW
+   Top of the screen: a mini board. Touch it to place the crosshair
+   (it sits a little above your finger so you can see it).
+   Bottom of the screen: the dart. Drag it and flick upwards.
+   Speed = power, straightness = steadiness, angle = sideways push.
+   ===================================================================== */
+const Swipe = (() => {
+  const cv = $('swipeCanvas');
+  const c = cv.getContext('2d');
+  let W = 0, H = 0, DPR = 1, bx = 0, by = 0, bs = 1, zoneTop = 0;
+  const aim = { x: 0, y: 0 };
+  let drag = null, aiming = false, fly = null, msg = 'Tap the board to aim, then flick the dart up';
+  const api = { calibrating: false, onThrow: null };
+  const FINGER_OFFSET = 46;
+
+  function resize() {
+    const r = cv.getBoundingClientRect();
+    if (!r.width) return;
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    zoneTop = H * 0.62;
+    const rad = Math.min(W * 0.46, zoneTop * 0.46);
+    bs = rad / B.SUR; bx = W / 2; by = zoneTop * 0.5;
+    draw();
+  }
+
+  function drawBoard() {
+    const s = bs, rad = d => d * Math.PI / 180;
+    c.fillStyle = '#0c0c0d'; c.beginPath(); c.arc(bx, by, B.SUR * s, 0, Math.PI * 2); c.fill();
+    const sector = (r0, r1, a0, a1, col) => { c.beginPath(); c.arc(bx, by, r1 * s, a0, a1); c.arc(bx, by, r0 * s, a1, a0, true); c.closePath(); c.fillStyle = col; c.fill(); };
+    for (let i = 0; i < 20; i++) {
+      const a0 = rad(i * 18 - 99), a1 = rad(i * 18 - 81), dark = i % 2 === 0;
+      const single = dark ? '#1b1b1b' : '#EFE2BF', ring = dark ? '#D0263A' : '#169048';
+      sector(B.OB, B.TI, a0, a1, single); sector(B.TI, B.TO, a0, a1, ring);
+      sector(B.TO, B.DI, a0, a1, single); sector(B.DI, B.DO, a0, a1, ring);
+    }
+    c.fillStyle = '#169048'; c.beginPath(); c.arc(bx, by, B.OB * s, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#D0263A'; c.beginPath(); c.arc(bx, by, B.BULL * s, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(210,214,220,.8)'; c.lineWidth = 1;
+    for (const r of [B.OB, B.TI, B.TO, B.DI, B.DO]) { c.beginPath(); c.arc(bx, by, r * s, 0, Math.PI * 2); c.stroke(); }
+    c.fillStyle = '#F0F0F0'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = '700 ' + Math.max(11, Math.round(20 * s)) + 'px system-ui, sans-serif';
+    for (let i = 0; i < 20; i++) { const a = rad(i * 18 - 90); c.fillText(SEG[i], bx + Math.cos(a) * B.NUM * s, by + Math.sin(a) * B.NUM * s); }
+  }
+
+  function drawDart(x, y, scale, angle) {
+    const pc = getComputedStyle(document.documentElement).getPropertyValue('--pc').trim() || '#E0B341';
+    c.save(); c.translate(x, y); c.rotate(angle || 0); c.scale(scale, scale);
+    // tip up, flight at the bottom
+    c.strokeStyle = '#B9BEC5'; c.lineWidth = 3; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(0, -70); c.lineTo(0, -48); c.stroke();
+    const g = c.createLinearGradient(-8, 0, 8, 0); g.addColorStop(0, '#5f646b'); g.addColorStop(0.5, '#f1f3f5'); g.addColorStop(1, '#43474d');
+    c.fillStyle = g; c.beginPath(); if (c.roundRect) c.roundRect(-8, -48, 16, 48, 6); else c.rect(-8, -48, 16, 48); c.fill();
+    c.strokeStyle = '#8C939B'; c.lineWidth = 5; c.beginPath(); c.moveTo(0, 0); c.lineTo(0, 30); c.stroke();
+    c.fillStyle = pc; c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(0, 18); c.lineTo(-30, 46); c.lineTo(-26, 66); c.lineTo(0, 52); c.lineTo(26, 66); c.lineTo(30, 46); c.closePath(); c.fill(); c.stroke();
+    c.restore();
+  }
+
+  function draw() {
+    if (!W) return;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, W, H);
+    drawBoard();
+    // crosshair
+    const ax = bx + aim.x * bs, ay = by - aim.y * bs;
+    c.strokeStyle = '#000'; c.lineWidth = 5; c.beginPath(); c.arc(ax, ay, 13, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--pc').trim(); c.lineWidth = 3;
+    c.beginPath(); c.arc(ax, ay, 13, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = '#fff'; c.lineWidth = 2;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { c.beginPath(); c.moveTo(ax + dx * 6, ay + dy * 6); c.lineTo(ax + dx * 20, ay + dy * 20); c.stroke(); }
+    // throw zone
+    c.fillStyle = 'rgba(255,255,255,.04)'; c.fillRect(0, zoneTop, W, H - zoneTop);
+    c.strokeStyle = 'rgba(255,255,255,.12)'; c.setLineDash([8, 8]); c.beginPath(); c.moveTo(0, zoneTop); c.lineTo(W, zoneTop); c.stroke(); c.setLineDash([]);
+    const ready = canThrow() || api.calibrating;
+    c.globalAlpha = ready ? 1 : 0.35;
+    if (fly) {
+      const t = Math.min(1, (performance.now() - fly.t0) / 350);
+      drawDart(fly.x + (ax - fly.x) * t, fly.y + (ay - fly.y) * t, 1.1 - 0.8 * t, fly.angle);
+      if (t >= 1) fly = null;
+      requestAnimationFrame(draw);
+    } else if (drag) {
+      drawDart(drag.x, drag.y, 1.1, 0);
+    } else {
+      drawDart(W / 2, zoneTop + (H - zoneTop) * 0.55, 1.1, 0);
+    }
+    c.globalAlpha = 1;
+    $('swipeMsg').textContent = ready ? msg : 'Waiting for your turn';
+  }
+
+  function setAim(px, py) {
+    aim.x = clamp((px - bx) / bs, -AIM_LIMIT, AIM_LIMIT);
+    aim.y = clamp(-(py - FINGER_OFFSET - by) / bs, -AIM_LIMIT, AIM_LIMIT);
+    draw();
+  }
+
+  function local(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, t: performance.now() }; }
+
+  cv.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (!(canThrow() || api.calibrating)) return;
+    cv.setPointerCapture(e.pointerId);
+    const p = local(e);
+    if (p.y < zoneTop) { aiming = true; if (!api.calibrating) setAim(p.x, p.y); return; }
+    drag = { x: p.x, y: p.y, pts: [p] };
+    buzz(15);
+    draw();
+  });
+  cv.addEventListener('pointermove', e => {
+    const p = local(e);
+    if (aiming && !api.calibrating) { setAim(p.x, Math.min(p.y, zoneTop)); return; }
+    if (!drag) return;
+    drag.x = p.x; drag.y = p.y; drag.pts.push(p);
+    if (drag.pts.length > 60) drag.pts.shift();
+    draw();
+  });
+  const end = e => {
+    if (aiming) { aiming = false; return; }
+    if (!drag) return;
+    const pts = drag.pts, endP = pts[pts.length - 1];
+    const startP = pts[0];
+    let p0 = endP;
+    for (let i = pts.length - 1; i >= 0; i--) { if (endP.t - pts[i].t <= 100) p0 = pts[i]; else break; }
+    const dtm = Math.max(1, endP.t - p0.t);
+    const vy = (p0.y - endP.y) / dtm;                    // px per ms, upward positive
+    const up = startP.y - endP.y;
+    const d = drag; drag = null;
+    if (vy < 0.35 || up < 40) { msg = 'Flick the dart up the screen'; draw(); return; }
+    const norm = vy / (innerHeight / 800);
+    const dx = endP.x - startP.x;
+    const angle = Math.atan2(dx, up) * 180 / Math.PI;
+    const len = Math.hypot(dx, up) || 1;
+    let curve = 0;
+    for (const p of pts) curve = Math.max(curve, Math.abs((p.x - startP.x) * up - (startP.y - p.y) * dx) / len);
+    const curvature = curve / len;
+    fly = { x: d.x, y: d.y, t0: performance.now(), angle: angle * Math.PI / 180 };
+    requestAnimationFrame(draw);
+    buzz(40);
+    if (api.calibrating) return Calib.record(norm);
+    const ideal = store.get('ideal.swipe', DEFAULT_IDEAL.swipe);
+    if (api.onThrow) api.onThrow({
+      aim: { x: aim.x, y: aim.y },
+      power: norm / ideal,
+      stability: clamp(Math.abs(angle) / 30 * 0.5 + curvature * 2.5, 0, 1),
+      lateral: clamp(angle * 1.1, -40, 40),
+      input: 'swipe'
+    });
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', () => { drag = null; aiming = false; draw(); });
+  addEventListener('resize', resize);
+
+  api.resize = () => requestAnimationFrame(resize);
+  api.message = t => { msg = t; draw(); };
+  api.get = () => ({ x: aim.x, y: aim.y });
+  api.redraw = draw;
+  return api;
+})();
+
+Swipe.onThrow = r => {
+  if (!canThrow()) return;
+  send({ t: 'throw', aim: r.aim, power: r.power, stability: r.stability, lateral: r.lateral, input: 'swipe' });
+  setAwait();
+  route();
+  Swipe.redraw();
+};
+
+/* =====================================================================
+   Live aim to the TV (30 times a second while it is your turn)
+   ===================================================================== */
+let lastSent = '';
+setInterval(() => {
+  if (!canThrow() || Motion.calibrating || Swipe.calibrating) return;
+  const a = control === 'swipe' ? Swipe.get() : Motion.get();
+  const key = a.x.toFixed(1) + ',' + a.y.toFixed(1);
+  if (key === lastSent) return;
+  lastSent = key;
+  send({ t: 'aim', x: a.x, y: a.y, mode: control });
+}, 33);
+
+/* =====================================================================
+   Calibration: three practice throws set your personal "perfect power"
+   ===================================================================== */
+const Calib = (() => {
+  const vals = [];
+  const el = $('calib'), padC = $('calibPad');
+  function ticks() { el.querySelectorAll('.ticks i').forEach((t, i) => t.classList.toggle('on', i < vals.length)); }
+  function open() {
+    vals.length = 0; ticks(); $('calibFeedback').textContent = '';
+    document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on'));
+    if (control === 'swipe') {
+      Swipe.calibrating = true;
+      $('calibText').textContent = 'Flick the dart up the screen three times, at the speed that feels natural. Nothing is thrown at the TV.';
+      padC.textContent = 'Flick up from the bottom';
+      padC.onpointerdown = padC.onpointerup = null;
+      el.classList.add('on');
+      swipeCalibStart();
+    } else {
+      Motion.calibrating = true;
+      $('calibText').textContent = 'Make three practice throws at the strength that feels natural. Hold your thumb on the pad, flick forward, and keep hold of the phone. Nothing is thrown at the TV.';
+      padC.textContent = 'Hold here and flick';
+      padC.onpointerdown = e => { e.preventDefault(); padC.classList.add('grip'); Motion.reset(); Motion.grip(true); };
+      padC.onpointerup = e => { e.preventDefault(); padC.classList.remove('grip'); Motion.grip(false); };
+      el.classList.add('on');
+    }
+  }
+  // Swipe calibration reuses the calibration pad as a swipe area.
+  let sw = null;
+  function swipeCalibStart() {
+    padC.onpointerdown = e => { e.preventDefault(); padC.setPointerCapture(e.pointerId); sw = [{ y: e.clientY, t: performance.now() }]; };
+    padC.onpointermove = e => { if (sw) sw.push({ y: e.clientY, t: performance.now() }); };
+    padC.onpointerup = () => {
+      if (!sw || sw.length < 2) { sw = null; return; }
+      const endP = sw[sw.length - 1]; let p0 = endP;
+      for (let i = sw.length - 1; i >= 0; i--) { if (endP.t - sw[i].t <= 100) p0 = sw[i]; else break; }
+      const vy = (p0.y - endP.y) / Math.max(1, endP.t - p0.t);
+      const up = sw[0].y - endP.y;
+      sw = null;
+      if (vy < 0.35 || up < 40) { $('calibFeedback').textContent = 'Flick upwards a bit faster'; return; }
+      record(vy / (innerHeight / 800));
+    };
+  }
+  function record(v) {
+    vals.push(v); ticks(); buzz(30);
+    $('calibFeedback').textContent = vals.length < 3 ? 'Got it. ' + (3 - vals.length) + ' more' : '';
+    Motion.reset();
+    if (vals.length >= 3) {
+      const med = [...vals].sort((a, b) => a - b)[1];
+      if (control === 'swipe') store.set('ideal.swipe', clamp(med, 0.8, 5));
+      else store.set('ideal.motion', clamp(med, 13, 45));
+      $('calibFeedback').textContent = 'Calibrated. Your natural throw is now perfect power.';
+      setTimeout(close, 1200);
+    }
+  }
+  function close() {
+    el.classList.remove('on');
+    Motion.calibrating = false; Swipe.calibrating = false;
+    Motion.grip(false);
+    padC.onpointerdown = padC.onpointerup = padC.onpointermove = null;
+  }
+  $('calibCancel').addEventListener('click', close);
+  return { open, record, close };
+})();
+$('calibBtn').addEventListener('click', () => Calib.open());
+$('calibBtnLobby').addEventListener('click', () => Calib.open());
+
+/* =====================================================================
+   Keep the screen awake during a game
+   ===================================================================== */
+let lock = null;
+async function wakeLock() {
+  try { if ('wakeLock' in navigator && !lock) { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } }
+  catch { /* not supported */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && joined) wakeLock(); });
+
+/* =====================================================================
+   Start
+   ===================================================================== */
+if (store.get('room', '') && store.get('name', '')) code = store.get('room', '');
+if (control === 'motion') Motion.enable().then(ok => { if (!ok) { control = null; store.set('control', null); route(); } });
+connect();
+route();
+syncSettings();
+</script>
+</body>
+</html>

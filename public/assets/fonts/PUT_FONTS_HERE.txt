@@ -1,0 +1,1 @@
+display.woff2 (Oswald Bold) and chalk.woff2 (Cabin Sketch). See OCHE_BIBLE.md section 4.
