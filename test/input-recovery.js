@@ -16,7 +16,7 @@ const phaseContext=vm.createContext({
   S:{phase:'lobby',players:[{id:'p1',colour:'#eee'}]},
   me:{id:'p1'},avatars:[],awaiting:false,
   Motion:{calibrating:true},Swipe:{calibrating:false},
-  resetInputOnInterruption(){steps.push('reset');this.Motion.calibrating=false;active=false},
+  resetInputOnInterruption(){steps.push('reset');phaseContext.Motion.calibrating=false;active=false},
   document:{
     querySelectorAll(){return [{classList:{remove(){steps.push('hide');}}}]},
     documentElement:{style:{setProperty(){}}}
