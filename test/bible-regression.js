@@ -112,4 +112,49 @@ check('TV/phone entrypoints retain the QR, accessible join, and safe score hints
   assert.match(tv,/id="visitScore"/);assert.match(tv,/FINISHING ROUTE/);
   assert.match(phone,/new URLSearchParams\(location.search\).get\('code'\)/);
 });
+check('Self-hosted QR generator creates valid SVGs and updates different room codes', () => {
+  const vm = require('node:vm');
+  const script = fs.readFileSync(path.join(__dirname, '../public/assets/js/qrcode.js'), 'utf8');
+  const licence = fs.readFileSync(path.join(__dirname, '../public/assets/js/QR_CODE_LICENSE.txt'), 'utf8');
+  const tv = fs.readFileSync(path.join(__dirname, '../public/tv.html'), 'utf8');
+  assert.match(licence, /MIT License/);
+  assert.match(tv, /src="\/assets\/js\/qrcode\.js"/);
+  assert.match(tv, /useSVG: true/);
+  assert.doesNotMatch(tv, /api\.qrserver\.com/i, 'No external QR service should receive a room code');
+  class El {
+    constructor(tagName) { this.tagName = tagName; this.childNodes = []; this.attrs = {}; }
+    setAttribute(key, value) { this.attrs[key] = value; }
+    setAttributeNS(_ns, key, value) { this.attrs[key] = value; }
+    appendChild(el) { this.childNodes.push(el); return el; }
+    hasChildNodes() { return this.childNodes.length > 0; }
+    get lastChild() { return this.childNodes.at(-1); }
+    removeChild(el) { const i = this.childNodes.indexOf(el); if (i !== -1) this.childNodes.splice(i, 1); return el; }
+  }
+  const document = { documentElement: { tagName: 'html' }, createElementNS: (_ns, name) => new El(name) };
+  const context = { document, navigator: { userAgent: 'OCHE QA' } };
+  vm.runInNewContext(script, context, { timeout: 3000 });
+  assert.equal(typeof context.QRCode, 'function');
+  const node = new El('div');
+  const first = 'https://oche-master.onrender.com/phone?code=ABCD';
+  const second = 'https://oche-master.onrender.com/phone?code=EFGH';
+  const qr = new context.QRCode(node, {
+    text: first, width: 320, height: 320, useSVG: true,
+    correctLevel: context.QRCode.CorrectLevel.M
+  });
+  assert.equal(node.title, first);
+  assert.equal(node.childNodes.length, 1);
+  assert.equal(node.childNodes[0].tagName, 'svg');
+  assert.ok(qr._oQRCode.getModuleCount() > 25);
+  const before = Array.from({ length: qr._oQRCode.getModuleCount() }, (_, y) =>
+    Array.from({ length: qr._oQRCode.getModuleCount() }, (_, x) => qr._oQRCode.isDark(y, x)).join('')
+  ).join('');
+  qr.makeCode(second);
+  assert.equal(node.title, second);
+  assert.equal(node.childNodes.length, 1, 'No stacked duplicate SVGs');
+  assert.equal(node.childNodes[0].tagName, 'svg');
+  const after = Array.from({ length: qr._oQRCode.getModuleCount() }, (_, y) =>
+    Array.from({ length: qr._oQRCode.getModuleCount() }, (_, x) => qr._oQRCode.isDark(y, x)).join('')
+  ).join('');
+  assert.notEqual(after, before, 'New room code must change the QR pixels');
+});
 console.log('OCHE BIBLE RULES QA: '+cases+' groups passed.');
