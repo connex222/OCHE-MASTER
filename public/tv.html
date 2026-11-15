@@ -70,6 +70,21 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 .slot.filled { border-style: solid; border-color: rgba(238,237,230,.6); }
 .slot.bust { border-color: var(--red); color: #ff8d98; }
 #hint { min-height: 2.6em; font-size: clamp(14px, 1.3vw, 25px); line-height: 1.3; color: var(--chalk); }
+/* Checkout advice stays on the right-hand chalkboard and never covers the board. */
+#hint.checkoutHint { min-height: 0; border-top: 1px solid rgba(212,167,58,.32); padding-top: .9vh; margin-top: .4vh; }
+#hint .finishHead { display: flex; justify-content: space-between; align-items: baseline; gap: 1vw; color: var(--brass); font-size: clamp(13px, 1.05vw, 20px); letter-spacing: .07em; font-weight: 800; }
+#hint .finishNeed { font-family: var(--chalkface); font-size: clamp(22px, 2.2vw, 42px); color: var(--chalk); letter-spacing: 0; }
+#hint .finishRoute { display: flex; justify-content: space-between; gap: .3vw; align-items: center; margin-top: .5vh; }
+#hint .finishDart { flex: 1 1 auto; min-width: 0; padding: .3vh .45vw; border: 1px solid rgba(238,237,230,.35); border-radius: 5px; text-align: center; font-family: var(--chalkface); font-size: clamp(20px, 2vw, 39px); color: white; }
+#hint .finishDart:last-child { color: var(--brass); border-color: rgba(212,167,58,.6); }
+#hint .finishArrow { font-size: clamp(12px, 1vw, 20px); color: var(--brass); }
+#hint .finishNote { margin-top: .35vh; color: var(--chalk-dim); font-size: clamp(12px, .92vw, 18px); }
+#hint .finishSetup { margin-top: .55vh; font-family: var(--chalkface); font-size: clamp(18px, 1.65vw, 30px); color: var(--chalk); }
+#visitScore { display: none; align-items: baseline; justify-content: space-between; gap: .6vw; margin: 0 0 .6vh; padding: .25vh .5vw; background: rgba(212,167,58,.09); border: 1px solid rgba(212,167,58,.4); border-radius: 5px; }
+#visitScore.on { display: flex; }
+#visitScore .visitCaption { color: var(--brass); font-size: clamp(13px, 1.05vw, 21px); letter-spacing: .06em; }
+#visitScore .visitNumber { color: var(--chalk); font-family: var(--chalkface); font-size: clamp(24px, 2.2vw, 44px); line-height: 1; }
+@media (max-height: 650px) { #hint.checkoutHint { padding-top: .3vh; } #hint .finishRoute { margin-top: .2vh; } #hint .finishNote { margin-top: 0; } }
 #joinLine { margin-top: 1vh; font-size: clamp(12px, .95vw, 18px); color: var(--chalk-dim); }
 
 /* lobby */
@@ -179,6 +194,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
     </div>
     <div id="rows"></div>
     <div id="visit"><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
+    <div id="visitScore" aria-live="polite"><span class="visitCaption">VISIT SCORED</span><strong class="visitNumber" id="visitNumber">0</strong></div>
     <div id="hint"></div>
     <div id="joinLine"></div>
   </div>
@@ -365,8 +381,11 @@ const Caller = (() => {
     speechSynthesis.speak(u);
   }
   async function say(key, text) {
-    if (!Sound.ready || Sound.muted) return;
-    const clip = key ? await Sound.loadOptional('caller/' + key) : null;
+    if (Sound.muted) return;
+    // Recorded calls take priority; never silently suppress the British-voice
+    // fallback when an optional number clip or audio context is unavailable.
+    const clip = Sound.ready && key ? await Sound.loadOptional('caller/' + key) : null;
+    if (Sound.muted) return;
     if (clip) Sound.playBuffer(clip, 1);
     else speak(text);
   }
@@ -780,7 +799,29 @@ function renderPanel() {
     slots[i].textContent = d && !hidden ? (d.bounceOut ? 'out' : d.label === 'MISS' ? 'miss' : d.label) : '';
     slots[i].className = 'slot' + (d && !hidden ? ' filled' : '') + (d && d.bust ? ' bust' : '');
   }
-  $('hint').textContent = g.hint || '';
+  const hint = $('hint');
+  const x01 = S.config.mode === 'x01' && S.phase === 'playing';
+  hint.classList.toggle('checkoutHint', x01);
+  if (x01) {
+    const seat = g.order.indexOf(g.currentId);
+    const left = view && view.scores && seat >= 0 ? view.scores[seat] : null;
+    const hintText = g.hint || '';
+    const match = /^Checkout:\s*(.*)$/.exec(hintText);
+    const darts = match ? match[1].trim().split(/\s+/).filter(t => /^(?:[TD]?(?:[1-9]|1[0-9]|20)|BULL|25)$/.test(t)) : [];
+    const dartsLeft = Math.max(0, 3 - g.darts.length);
+    const title = darts.length ? 'FINISHING ROUTE' : 'NEXT TARGET';
+    const need = Number.isFinite(left) ? String(left) + ' TO GO' : '';
+    const route = darts.length
+      ? '<div class="finishRoute">' + darts.map((t, i) => (i ? '<span class="finishArrow" aria-hidden="true">›</span>' : '') + '<span class="finishDart">' + t + '</span>').join('') + '</div>'
+      : '<div class="finishSetup">' + esc(hintText || 'Prepare your next visit') + '</div>';
+    hint.innerHTML = '<div class="finishHead"><span>' + title + '</span><span class="finishNeed">' + esc(need) + '</span></div>' + route +
+      '<div class="finishNote">' + dartsLeft + ' dart' + (dartsLeft === 1 ? '' : 's') + ' remaining this visit' + (darts.length ? ' · finish on ' + (S.config.options.doubleOut === false ? 'zero' : 'a double') : '') + '</div>';
+  } else {
+    hint.textContent = g.hint || '';
+  }
+  const recentVisit = g.turnPhase === 'collect';
+  $('visitScore').classList.toggle('on', recentVisit);
+  if (recentVisit) $('visitNumber').textContent = g.darts.some(d => d.bust) ? '0' : String(g.darts.reduce((t, d) => t + d.score, 0));
 
   // Banner
   const cur = player(g.currentId);
