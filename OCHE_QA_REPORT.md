@@ -1,68 +1,47 @@
-# OCHE — Bible Compliance and QA
+# OCHE — Bible Production QA
 
-Checked: 15 November 2026, 14:00 UTC
+Updated: 15 November 2026 (UTC)
 
-## Verified
+## Current release
 
-- 42 positive static, package and unit checks
-- All 18 original uploaded file contents are byte-for-byte preserved
-- All nine approved image filenames/dimensions present
-- Greyscale flights, transparent cabinet aperture, and source syntax checked
-- The Bible section 8 optional features have not been added
+- Repository: https://github.com/connex222/OCHE-MASTER (`main`).
+- Render service: https://oche-master.onrender.com/tv
+- Render auto-deploy enabled. Every Docker build is gated by:
+  1. `node test/bible-regression.js` — 19 deterministic test groups across all seven game modes.
+  2. `npm test` — real WebSocket simulation of a completed 301 game, return to lobby, Killer rematch, and captain undo.
+- The 15 November deployment of commit `911bff89c4581773e1754e2476735d2ae8f6ee42` reached **live** status. The tests also passed in the actual Render Docker build.
 
-## Known limitations
+## Verified implementation
 
-- Full WebSocket simulation unavailable offline: npm dependency ws not installed
-- Sound media (18 effects/music and 7 voice clips) and fonts are **linked**, not embedded in this deliverable; Docker builds download them from their origin when internet is available.
-- The package was not uploaded to GitHub or deployed to Render in this environment.
-- iOS Safari/Android Chrome over HTTPS, calibration fairness, multi-player completion and TV legibility need real-device verification.
-- Original TV CSS uses #D7263D/#1F8A4C for interface accents, while Bible red/green #C8202F/#127A3E are used for the precision board; kept existing code unchanged.
+- The regulation dartboard and scoring geometry remain code-drawn; AI artwork does **not** replace the playable board.
+- All nine named Bible artwork assets were delivered with the required canvas sizes and dart anchors.
+- Render's build log confirms all 18 SFX/music tracks, seven recorded caller clips, and both specified fonts were successfully installed. Number clips outside those seven recordings currently use browser speech.
+- QR join link targets `/phone?code=ROOM`, preserving manual room-code entry.
+- The right-side X01 finishing guide uses server-provided hints, rather than a second scoring engine.
+- Recorded or browser-spoken visit totals follow the server's **rules-credited** scores, including double-in and Shanghai.
+- Dart artwork supports player-coloured flight layers, aligned to the Bible.
+- Tested 720p and 1080p headless TV presentation, including eight-player X01, eight-player Cricket and lobby; no overall chalkboard overflow detected. Cricket marks no longer collide with other player rows.
+- TV can enter or exit fullscreen using a visible non-obstructing button, or the F shortcut.
+- Score announcements lower background loops during speech, and fresh caller announcements cancel stale ones. Mute stops audio already playing.
 
-## Failures
+## Automated tests: verified passing
 
-- None in the checks performed
+- 19 groups covering catalogue, options, board rings, all legal checkout routes, bogey finishes, X01 double-in/out and busts, Round the Clock, Round the World, Cricket, Shanghai, Killer, Free Practice, player counts, hints and QR join safeguards.
+- Render WebSocket simulation: completed a 301 match, returned to lobby, started Killer and verified undo.
+- Local Chromium smoke checks at 1280×720, 1920×1080 and portrait orientation. These use simulated game state and **do not certify real phone/TV hardware**.
 
-## Detailed checks
+## Still required before calling OCHE AAA-complete
 
-- Unchanged public/assets/img/PUT_IMAGES_HERE.txt
-- Unchanged public/assets/fonts/PUT_FONTS_HERE.txt
-- Unchanged public/assets/sfx/caller/PUT_CALLER_CLIPS_HERE.txt
-- Unchanged public/assets/sfx/PUT_SOUNDS_HERE.txt
-- Unchanged public/index.html
-- Unchanged public/phone.html
-- Unchanged public/tv.html
-- Unchanged README.md
-- Unchanged test/simulate.js
-- Unchanged .gitignore
-- Unchanged package-lock.json
-- Unchanged package.json
-- Unchanged lib/modes.js
-- Unchanged lib/physics.js
-- Unchanged lib/checkouts.js
-- Unchanged lib/board.js
-- Unchanged server.js
-- Unchanged OCHE_BIBLE.md
-- Image background.jpg (1920, 1080)
-- Image cabinet.png (2048, 2048)
-- Image sisal.png (1024, 1024)
-- Image chalkboard.jpg (1200, 2000)
-- Image logo.png (1600, 500)
-- Image dart_fly_body.png (512, 512)
-- Image dart_fly_flight.png (512, 512)
-- Flight greyscale dart_fly_flight.png
-- Image dart_stuck_body.png (512, 512)
-- Image dart_stuck_flight.png (512, 512)
-- Flight greyscale dart_stuck_flight.png
-- Cabinet fully transparent over exact 1400px centred aperture
-- Node syntax server.js
-- Node syntax lib/board.js
-- Node syntax lib/physics.js
-- Node syntax lib/checkouts.js
-- Node syntax lib/modes.js
-- Node syntax test/simulate.js
-- Node syntax deployment/fetch-media.js
-- Browser JS syntax public/tv.html
-- Browser JS syntax public/phone.html
-- 25 recorded Creative Claw files mapped in deployment downloader
-- Fonts fetched from Google Fonts
-- Original unit tests pass: Perfect throws within 25mm of aim: 89.2%; Unit checks passed
+- iPhone Safari and Android Chrome over HTTPS; check motion-throw permissions, sensor updates, fallback swipe, calibration and reconnection.
+- Three-player Cricket and four-player Killer played completely on real devices, with join/leave, pause/reconnect and results checked.
+- Test a child's Easy-mode swipe experience through Round the Clock.
+- Assess live dart-throw fairness at Normal after each player's three-throw calibration; validate all game modes for pacing and end states.
+- Listen to announcements on real TV speakers alongside impact sounds, music and room ambience; ensure all normal scores are spoken intelligibly.
+- Test that the QR graphic is visible and scans on the actual TV. It currently depends on an external QR image endpoint; manual code entry is the fallback if that endpoint is blocked.
+- Check TV legibility across typical room distance and phone legibility in bright daylight/darkness.
+
+## Change safeguards
+
+- The existing physics and seven game-mode rule modules were not modified by the recent UI/audio/layout work.
+- Do not add unapproved new modes, computer opponents or dart deflections without separately checking section 8 of the Bible.
+- GitHub and Render status are not substitutes for the outstanding human device testing.
