@@ -10,7 +10,22 @@ Updated: 15 November 2026 (UTC)
   1. `node test/bible-regression.js` — 20 deterministic test groups across all seven game modes, including a real SVG QR matrix check.
   2. `npm test` — real WebSocket simulation of a completed 301 game, return to lobby, Killer rematch, and captain undo.
   3. `node test/party-smoke.js` — eight-phone capacity, phone and TV reconnection, seat reclaim, and start/authoritative throw/end/return-to-lobby for every mode (11 smoke checks).
+  4. `node test/frontend-polish.js` — phone/TV script parsing, QR-room preference, connection/overlay safeguards, pointer capture, calibration and recorded-caller preloading (4 checks).
+  5. `node test/navigation-smoke.js` — real WebSocket tests for lobby leave, active-game leave, captain handover, cross-room isolation and seat reclaim (5 checks).
 - Render release gating was verified on 15 November 2026, including 20 rules/QR groups, the full 301 WebSocket simulation, and 11 additional eight-phone/party smoke checks. Deployments that fail the Docker build checks cannot replace the live version.
+
+## November 15 AAA navigation / caller / throwing pass
+
+- Source commit `296843e36c8814057affdd8615fb6289a6488877` passed all five Render build gates and reached **live**.
+- Scanning a QR for a new room now overrides a phone's remembered older room; an invalid QR cannot silently reconnect to the wrong game.
+- Leaving a game detaches the player's WebSocket from that room. Mid-match departures remain offline in the original turn order and the captain can skip them; reconnects reclaim the seat. Players can move rooms without receiving the previous room's updates.
+- Connection-loss banner explains when throwing is paused; a disconnected phone cannot submit throws.
+- When the match phase changes, settings/calibration overlays close automatically so players do not miss turns.
+- The control-choice screen has an explicit return to joining. Touch targets are at least 44 px on relevant small controls, and browser zoom remains enabled.
+- Swipe throwing includes the true finger-release position and ignores secondary pointers, with a 16 ms timing floor to prevent extreme power readings from sparse touch events. Motion grip uses pointer capture to handle fast/off-element releases.
+- Three-throw swipe calibration uses the same release sampling. Reopening calibration cancels a pending auto-close timer; cancelling a gesture safely clears its active state.
+- The TV preloads the seven already approved recorded caller clips during sound initialisation; browser speech remains the fallback for other scores and player names.
+- No extra game modes and no changes to the server's scoring/physics model or any of the seven rule modules.
 
 ## Verified implementation
 
