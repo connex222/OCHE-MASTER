@@ -13,6 +13,8 @@ RUN npm test
 RUN node test/party-smoke.js
 # Prevent broken QR navigation, swipe capture and caller timing from shipping.
 RUN node test/frontend-polish.js
+# Keep throws, rejoining and calibration reliable through phone interruptions.
+RUN node test/input-recovery.js
 # Verify leaving and changing rooms never corrupt an active game.
 RUN node test/navigation-smoke.js
 # Twelve server-authoritative avatars; distinct casting and skippable walk-ons.
