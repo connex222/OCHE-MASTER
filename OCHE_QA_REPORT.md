@@ -31,7 +31,7 @@ Updated: 15 November 2026 (UTC)
 
 - The regulation dartboard and scoring geometry remain code-drawn; AI artwork does **not** replace the playable board.
 - All nine named Bible artwork assets were delivered with the required canvas sizes and dart anchors.
-- Render's build log confirms all 18 SFX/music tracks, seven recorded caller clips, and both specified fonts were successfully installed. Number clips outside those seven recordings currently use browser speech.
+- The new Bible build installs all 19 SFX/music tracks (including walk-on sting), 20 recorded caller clips (the original seven plus Let's Play Darts and 12 walk-on lines), and both specified fonts. Unrecorded numeric calls continue to use browser speech.
 - QR join link targets `/phone?code=ROOM`, preserving manual room-code entry. The QR is generated entirely within the TV page using a bundled MIT-licensed library (local SVG), rather than exposing the current room code to an external image service. It regenerates only when the room changes, with a white scanning margin.
 - The right-side X01 finishing guide uses server-provided hints, rather than a second scoring engine.
 - Recorded or browser-spoken visit totals follow the server's **rules-credited** scores, including double-in and Shanghai.
@@ -62,3 +62,21 @@ Updated: 15 November 2026 (UTC)
 - The existing physics and seven game-mode rule modules were not modified by the recent UI/audio/layout work.
 - Do not add unapproved new modes, computer opponents or dart deflections without separately checking section 8 of the Bible.
 - GitHub and Render status are not substitutes for the outstanding human device testing.
+
+## 15 November 2026 — remaining AAA polish
+
+- The 12 supplied portrait PNGs are retained byte-for-byte: full-length, transparent, 1024 × 1536, with the official avatar IDs in `lib/avatars.js`. Their real-TV visual scale and framing still require human inspection; header/alpha checks do not prove appearance quality.
+- Corrected avatar-picker redraws: repeated lobby WebSocket state messages no longer recreate and reload all twelve character thumbnails. A changed character or an occupied/free slot still updates immediately.
+- Corrected the opening caller sequence: the recorded "Game on" call starts first, and the first player's bull-off/checkout call waits until it has finished. Stale scheduled turn calls are discarded after a match transition.
+- The seven original game modes, physics parameters and avatars are unchanged.
+- New frontend QA: **7 passed**, including an executable simulated-DOM test proving stable avatar images and live selection updates.
+- New full walk-on QA: **5 passed** in Render, verifying no scoring during entrances, all three sequential character presentations, automatic handover to playable bull-off, a valid first dart, and rematch introductions that the captain can skip.
+- Render confirmed `727e5a7135c2b524112a00218055a41bbb7e465b` live after all release gates passed.
+
+### Remaining human acceptance (not certified by automated tests)
+
+- Listen to the caller and character entrances on the actual TV speakers; confirm that all 12 identities are pronounced clearly and that stings/cheers do not mask speech.
+- Review all twelve full-length figures on a 720p TV, and the portrait crops on the scoreboard. Confirm there is no stretching, cropping or visual mismatch.
+- Test the character picker on iPhone Safari and Android Chrome with two or more real players, including changing characters and reconnecting.
+- Complete full three-player Cricket and four-player Killer matches on physical phones, including calibration, fairness, results and replay.
+- If the browser-generated ordinary score totals sound noticeably inconsistent, consider replacing those with a larger matching recorded numeric library. The Bible makes that optional; no new modes are needed.
