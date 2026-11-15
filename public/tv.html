@@ -297,7 +297,17 @@ const Sound = (() => {
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
-    await Promise.all(NAMES.map(async n => { buf[n] = await fetchBuf(n); }));
+    // Warm the seven approved recorded calls while the TV's sound starts.
+    // First-use network fetches must not make a 180 or game shot arrive late.
+    const callerKeys = ['0', '180', 'gameon', 'bust', 'killer', 'gameshot_leg', 'gameshot_match'];
+    await Promise.all([
+      ...NAMES.map(async n => { buf[n] = await fetchBuf(n); }),
+      ...callerKeys.map(async n => {
+        const key = 'caller/' + n;
+        optional[key] = fetchBuf(key);
+        await optional[key];
+      })
+    ]);
   }
   async function loadOptional(path) {
     if (!ctx) return null;

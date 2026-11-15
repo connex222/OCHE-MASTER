@@ -11,6 +11,10 @@ RUN node test/bible-regression.js
 RUN npm test
 # Full party-night WebSocket smoke: eight phones, seven modes, reconnects, captain tools.
 RUN node test/party-smoke.js
+# Prevent broken QR navigation, swipe capture and caller timing from shipping.
+RUN node test/frontend-polish.js
+# Verify leaving and changing rooms never corrupt an active game.
+RUN node test/navigation-smoke.js
 # Acquire the Creative Claw assets and the two Bible-specified OFL fonts.
 RUN node deployment/fetch-media.js
 ENV NODE_ENV=production

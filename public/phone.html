@@ -2,7 +2,7 @@
 <html lang="en-GB">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#161D1B">
 <title>OCHE: Your dart</title>
 <style>
@@ -43,6 +43,8 @@ input:focus { border-color: var(--brass); }
 .btn:disabled { opacity: .4; }
 .btn:focus-visible, .seg button:focus-visible, .mode:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .err { color: #FF8794; font-weight: 700; min-height: 1.4em; font-size: 16px; }
+#netNotice { position: fixed; z-index: 50; top: calc(6px + var(--safe-t)); left: 12px; right: 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid #D4A73A; background: #322819; color: #EEEDE6; text-align: center; font: 700 15px var(--body); box-shadow: 0 4px 15px #0009; pointer-events: none; }
+#netNotice[hidden] { display: none; }
 .card { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 16px; }
 .choice { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 18px; border-radius: 16px; border: 3px solid var(--line); background: var(--panel); color: var(--chalk); font: inherit; cursor: pointer; }
 .choice b { font: 800 22px var(--display); }
@@ -58,7 +60,7 @@ input:focus { border-color: var(--brass); }
 .me { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
 .me i { width: 18px; height: 18px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 10px var(--pc); flex: none; }
 .topbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.iconbtn { font: 700 15px var(--body); padding: 10px 14px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); color: var(--chalk); cursor: pointer; }
+.iconbtn { font: 700 15px var(--body); padding: 10px 14px; min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); color: var(--chalk); cursor: pointer; }
 .big { font-family: var(--display); font-weight: 900; font-size: 56px; line-height: 1; }
 .hint { font-size: 18px; line-height: 1.35; color: var(--chalk); }
 .darts { display: flex; gap: 8px; }
@@ -103,6 +105,8 @@ input:focus { border-color: var(--brass); }
 </head>
 <body>
 
+<div id="netNotice" role="status" aria-live="polite" hidden>Connection lost — reconnecting. Throws paused.</div>
+
 <!-- Join -->
 <section class="scr" id="scrJoin">
   <h1>OCHE</h1>
@@ -120,6 +124,7 @@ input:focus { border-color: var(--brass); }
   <button class="choice" id="pickSwipe" type="button"><b>Swipe to throw</b><span>Tap where to aim, then flick the dart up the screen. Best for children, or if you would rather not wave your phone about.</span></button>
   <div class="safety"><b>Hold on tight.</b> Never let go of your phone when you flick. Use a wrist strap or grip if you have one, and keep clear of other people and the TV.</div>
   <div class="err" id="controlErr" role="alert"></div>
+  <button class="btn ghost" id="backToJoin" type="button">Back to joining</button>
 </section>
 
 <!-- Lobby -->
@@ -249,11 +254,20 @@ let awaiting = false, awaitTimer = 0;
 
 function connect() {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
-  ws.onopen = () => { if (code) sendJoin(); };
+  ws.onopen = () => { setNetworkStatus(true); if (code) sendJoin(); };
   ws.onmessage = e => { try { onMessage(JSON.parse(e.data)); } catch (err) { console.error(err); } };
-  ws.onclose = () => { if (!replaced) setTimeout(connect, 1200); };
+  ws.onclose = () => {
+    if (replaced) return;
+    setNetworkStatus(false);
+    clearAwait();
+    setTimeout(connect, 1200);
+  };
 }
 function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
+function setNetworkStatus(connected) {
+  $('netNotice').hidden = connected;
+  if (!connected) $('netNotice').textContent = 'Connection lost — reconnecting. Throws are paused.';
+}
 function sendJoin() { send({ t: 'join', code, name: store.get('name', ''), playerId: pid, difficulty, control: control || 'motion' }); }
 
 function onMessage(m) {
@@ -292,7 +306,14 @@ function onMessage(m) {
 }
 
 function onState(m) {
+  const previousPhase = S && S.phase;
   S = m;
+  // A round starting while Settings or Calibration is open must never hide the
+  // player's first throw behind a stale overlay.
+  if (previousPhase && previousPhase !== m.phase) {
+    document.querySelectorAll('.sheet').forEach(sheet => sheet.classList.remove('on'));
+    if ($('calib').classList.contains('on')) Calib.close();
+  }
   const mine = S.players.find(p => p.id === (me && me.id));
   if (mine) {
     document.documentElement.style.setProperty('--pc', mine.colour);
@@ -317,7 +338,7 @@ function show(id) {
 }
 
 function isMyTurn() { return !!(S && S.game && me && S.game.currentId === me.id); }
-function canThrow() { return isMyTurn() && S.game.turnPhase === 'aim' && !awaiting; }
+function canThrow() { return !!(ws && ws.readyState === WebSocket.OPEN && isMyTurn() && S.game.turnPhase === 'aim' && !awaiting); }
 function isCaptain() { return !!(S && me && S.captainId === me.id); }
 
 function route() {
@@ -452,7 +473,9 @@ $('rematchBtn').addEventListener('click', () => send({ t: 'again', rematch: true
 $('newGameBtn').addEventListener('click', () => send({ t: 'again', rematch: false }));
 
 /* ---------------- join & control ---------------- */
-$('code').value = (new URLSearchParams(location.search).get('code') || store.get('room', '') || '').toUpperCase();
+const scannedRoom = new URLSearchParams(location.search).get('code');
+const requestedRoom = scannedRoom === null ? null : scannedRoom.trim().toUpperCase();
+$('code').value = (requestedRoom !== null ? requestedRoom : store.get('room', '') || '').replace(/[^A-Z]/g, '').slice(0, 4);
 $('name').value = store.get('name', '');
 $('code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, ''); });
 $('joinBtn').addEventListener('click', () => {
@@ -505,11 +528,18 @@ $('segSens').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   sens = Number(b.dataset.v); store.set('sens', sens); syncSettings();
 });
-$('leaveBtn').addEventListener('click', () => {
-  send({ t: 'leave' }); store.set('room', ''); code = ''; joined = false; S = null;
-  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on'));
+function leaveGame() {
+  if (S && ['playing', 'bulloff', 'legOver'].includes(S.phase) &&
+      !confirm('Leave this match? You will appear offline until you rejoin. The captain can skip your turn if needed.')) return;
+  send({ t: 'leave' });
+  store.set('room', ''); code = ''; joined = false; S = null; me = null; draft = null;
+  clearAwait();
+  document.querySelectorAll('.sheet').forEach(sheet => sheet.classList.remove('on'));
+  $('joinErr').textContent = '';
   route();
-});
+}
+$('leaveBtn').addEventListener('click', leaveGame);
+$('backToJoin').addEventListener('click', leaveGame);
 $('undoBtn').addEventListener('click', () => { send({ t: 'undo' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); });
 $('skipBtn').addEventListener('click', () => { send({ t: 'skip' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); });
 $('endBtn').addEventListener('click', () => {
@@ -638,11 +668,14 @@ const Motion = (() => {
   return api;
 })();
 
-/* Motion pad */
+/* Motion pad: keep grip reliably across fast swipes and off-element releases. */
 const pad = $('pad');
+let gripPointerId = null;
 function padDown(e) {
   e.preventDefault();
-  if (!canThrow()) return;
+  if (!canThrow() || gripPointerId !== null || e.isPrimary === false) return;
+  gripPointerId = e.pointerId;
+  try { pad.setPointerCapture(e.pointerId); } catch { /* browser without capture */ }
   pad.classList.add('grip');
   pad.querySelector('b').textContent = 'Gripped';
   pad.querySelector('span').textContent = 'Aim, then flick forward. Keep hold of the phone.';
@@ -651,7 +684,14 @@ function padDown(e) {
   Motion.grip(true);
 }
 function padUp(e) {
-  if (e) e.preventDefault();
+  if (e) {
+    if (gripPointerId !== null && e.pointerId !== gripPointerId) return;
+    e.preventDefault();
+  }
+  if (gripPointerId !== null) {
+    try { if (pad.hasPointerCapture(gripPointerId)) pad.releasePointerCapture(gripPointerId); } catch { /* released */ }
+  }
+  gripPointerId = null;
   pad.classList.remove('grip');
   pad.querySelector('b').textContent = 'Your throw';
   pad.querySelector('span').textContent = 'Point the top of your phone at the board. Hold your thumb here, then flick forward. Don\'t let go of the phone.';
@@ -686,7 +726,7 @@ const Swipe = (() => {
   const c = cv.getContext('2d');
   let W = 0, H = 0, DPR = 1, bx = 0, by = 0, bs = 1, zoneTop = 0;
   const aim = { x: 0, y: 0 };
-  let drag = null, aiming = false, fly = null, msg = 'Tap the board to aim, then flick the dart up';
+  let drag = null, aiming = false, activePointerId = null, fly = null, msg = 'Tap the board to aim, then flick the dart up';
   const api = { calibrating: false, onThrow: null };
   const FINGER_OFFSET = 46;
 
@@ -776,7 +816,8 @@ const Swipe = (() => {
 
   cv.addEventListener('pointerdown', e => {
     e.preventDefault();
-    if (!(canThrow() || api.calibrating)) return;
+    if (!(canThrow() || api.calibrating) || activePointerId !== null || e.isPrimary === false) return;
+    activePointerId = e.pointerId;
     cv.setPointerCapture(e.pointerId);
     const p = local(e);
     if (p.y < zoneTop) { aiming = true; if (!api.calibrating) setAim(p.x, p.y); return; }
@@ -785,6 +826,7 @@ const Swipe = (() => {
     draw();
   });
   cv.addEventListener('pointermove', e => {
+    if (e.pointerId !== activePointerId) return;
     const p = local(e);
     if (aiming && !api.calibrating) { setAim(p.x, Math.min(p.y, zoneTop)); return; }
     if (!drag) return;
@@ -793,13 +835,20 @@ const Swipe = (() => {
     draw();
   });
   const end = e => {
-    if (aiming) { aiming = false; return; }
+    if (e.pointerId !== activePointerId) return;
+    e.preventDefault();
+    activePointerId = null;
+    if (cv.hasPointerCapture && cv.hasPointerCapture(e.pointerId)) cv.releasePointerCapture(e.pointerId);
+    if (aiming) { aiming = false; draw(); return; }
     if (!drag) return;
-    const pts = drag.pts, endP = pts[pts.length - 1];
+    // Include the actual finger-release coordinate. The last pointermove may
+    // be tens of milliseconds old, especially on lower-refresh-rate phones.
+    const endP = local(e), pts = drag.pts;
+    pts.push(endP);
     const startP = pts[0];
     let p0 = endP;
     for (let i = pts.length - 1; i >= 0; i--) { if (endP.t - pts[i].t <= 100) p0 = pts[i]; else break; }
-    const dtm = Math.max(1, endP.t - p0.t);
+    const dtm = Math.max(16, endP.t - p0.t); // smooth sparse high-refresh touch events
     const vy = (p0.y - endP.y) / dtm;                    // px per ms, upward positive
     const up = startP.y - endP.y;
     const d = drag; drag = null;
@@ -825,7 +874,10 @@ const Swipe = (() => {
     });
   };
   cv.addEventListener('pointerup', end);
-  cv.addEventListener('pointercancel', () => { drag = null; aiming = false; draw(); });
+  cv.addEventListener('pointercancel', e => {
+    if (e.pointerId !== activePointerId) return;
+    activePointerId = null; drag = null; aiming = false; draw();
+  });
   addEventListener('resize', resize);
 
   api.resize = () => requestAnimationFrame(resize);
@@ -862,8 +914,10 @@ setInterval(() => {
 const Calib = (() => {
   const vals = [];
   const el = $('calib'), padC = $('calibPad');
+  let closeTimer = null;
   function ticks() { el.querySelectorAll('.ticks i').forEach((t, i) => t.classList.toggle('on', i < vals.length)); }
   function open() {
+    clearTimeout(closeTimer); closeTimer = null;
     vals.length = 0; ticks(); $('calibFeedback').textContent = '';
     document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on'));
     if (control === 'swipe') {
@@ -878,20 +932,28 @@ const Calib = (() => {
       $('calibText').textContent = 'Make three practice throws at the strength that feels natural. Hold your thumb on the pad, flick forward, and keep hold of the phone. Nothing is thrown at the TV.';
       padC.textContent = 'Hold here and flick';
       padC.onpointerdown = e => { e.preventDefault(); padC.classList.add('grip'); Motion.reset(); Motion.grip(true); };
-      padC.onpointerup = e => { e.preventDefault(); padC.classList.remove('grip'); Motion.grip(false); };
+      padC.onpointerup = padC.onpointercancel = e => { e.preventDefault(); padC.classList.remove('grip'); Motion.grip(false); };
       el.classList.add('on');
     }
   }
   // Swipe calibration reuses the calibration pad as a swipe area.
   let sw = null;
   function swipeCalibStart() {
-    padC.onpointerdown = e => { e.preventDefault(); padC.setPointerCapture(e.pointerId); sw = [{ y: e.clientY, t: performance.now() }]; };
+    padC.onpointerdown = e => {
+      e.preventDefault();
+      try { padC.setPointerCapture(e.pointerId); } catch { /* unsupported */ }
+      sw = [{ y: e.clientY, t: performance.now() }];
+    };
+    padC.onpointercancel = () => { sw = null; };
     padC.onpointermove = e => { if (sw) sw.push({ y: e.clientY, t: performance.now() }); };
-    padC.onpointerup = () => {
-      if (!sw || sw.length < 2) { sw = null; return; }
+    padC.onpointerup = e => {
+      if (!sw) return;
+      // Calibration uses the same real release coordinate as gameplay.
+      sw.push({ y: e.clientY, t: performance.now() });
+      if (sw.length < 2) { sw = null; return; }
       const endP = sw[sw.length - 1]; let p0 = endP;
       for (let i = sw.length - 1; i >= 0; i--) { if (endP.t - sw[i].t <= 100) p0 = sw[i]; else break; }
-      const vy = (p0.y - endP.y) / Math.max(1, endP.t - p0.t);
+      const vy = (p0.y - endP.y) / Math.max(16, endP.t - p0.t);
       const up = sw[0].y - endP.y;
       sw = null;
       if (vy < 0.35 || up < 40) { $('calibFeedback').textContent = 'Flick upwards a bit faster'; return; }
@@ -907,14 +969,15 @@ const Calib = (() => {
       if (control === 'swipe') store.set('ideal.swipe', clamp(med, 0.8, 5));
       else store.set('ideal.motion', clamp(med, 13, 45));
       $('calibFeedback').textContent = 'Calibrated. Your natural throw is now perfect power.';
-      setTimeout(close, 1200);
+      closeTimer = setTimeout(close, 1200);
     }
   }
   function close() {
+    clearTimeout(closeTimer); closeTimer = null;
     el.classList.remove('on');
     Motion.calibrating = false; Swipe.calibrating = false;
     Motion.grip(false);
-    padC.onpointerdown = padC.onpointerup = padC.onpointermove = null;
+    padC.onpointerdown = padC.onpointerup = padC.onpointermove = padC.onpointercancel = null;
   }
   $('calibCancel').addEventListener('click', close);
   return { open, record, close };
@@ -935,8 +998,18 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 /* =====================================================================
    Start
    ===================================================================== */
-if (store.get('room', '') && store.get('name', '')) code = store.get('room', '');
+// A scanned QR always wins over a saved room. An invalid QR never joins an
+// unrelated old game: let the user correct the four letters manually.
+if (store.get('name', '')) {
+  if (requestedRoom !== null) {
+    if (/^[A-Z]{4}$/.test(requestedRoom)) code = requestedRoom;
+  } else {
+    const rememberedRoom = store.get('room', '');
+    if (/^[A-Z]{4}$/.test(rememberedRoom)) code = rememberedRoom;
+  }
+}
 if (control === 'motion') Motion.enable().then(ok => { if (!ok) { control = null; store.set('control', null); route(); } });
+setNetworkStatus(false);
 connect();
 route();
 syncSettings();

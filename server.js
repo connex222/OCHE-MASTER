@@ -512,11 +512,20 @@ const HANDLERS = {
   },
 
   leave(ws, m, room, player) {
+    // Leaving must detach the old WebSocket, even mid-match, or it keeps
+    // receiving a different room's states after the phone joins elsewhere.
+    if (player.dropTimer) { clearTimeout(player.dropTimer); player.dropTimer = null; }
     if (room.phase === 'lobby') {
       room.players = room.players.filter(p => p.id !== player.id);
-      refreshCaptain(room);
-      pushState(room);
+    } else {
+      // Preserve an active game's turn order and rules. The player may reclaim
+      // this seat later; the captain can skip an absent player's turn.
+      player.online = false;
+      player.ws = null;
     }
+    ws.room = null; ws.role = null; ws.playerId = null;
+    refreshCaptain(room);
+    pushState(room);
   }
 };
 
