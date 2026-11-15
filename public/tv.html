@@ -105,7 +105,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 #qrBox { display: flex; flex-direction: column; align-items: center; gap: .8vh; margin-top: .4vh; }
 #qrFrame { width: clamp(132px, 12vw, 220px); aspect-ratio: 1; padding: 10px; border-radius: 12px; background: #fff; box-shadow: 0 .4vw 1.2vw rgba(0,0,0,.35); }
 #qrImg { width: 100%; height: 100%; display: block; border-radius: 6px; background: #fff; color: #140E0A; font: 700 13px/1.4 sans-serif; text-align: center; }
-#qrImg img, #qrImg canvas { display: block; width: 100%; height: 100%; border-radius: 4px; image-rendering: pixelated; }
+#qrImg img, #qrImg canvas, #qrImg svg { display: block; width: 100%; height: 100%; border-radius: 4px; image-rendering: pixelated; }
 #qrCaption { font-size: clamp(12px, .95vw, 18px); color: var(--chalk-dim); text-align: center; }
 #lobbyPlayers { display: grid; grid-template-columns: 1fr 1fr; gap: .8vh .8vw; }
 .lp { display: flex; align-items: center; gap: .6vw; font-size: clamp(15px, 1.3vw, 26px); padding: .5vh .6vw; border-radius: 6px; background: rgba(238,237,230,.06); white-space: nowrap; overflow: hidden; }
@@ -801,7 +801,7 @@ function renderJoinQr(code) {
   try {
     if (!joinQr) {
       joinQr = new QRCode(node, {
-        text: url, width: 320, height: 320,
+        text: url, width: 320, height: 320, useSVG: true,
         colorDark: '#140E0A', colorLight: '#ffffff',
         correctLevel: QRCode.CorrectLevel.M
       });
