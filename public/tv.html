@@ -111,6 +111,28 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 .lp { display: flex; align-items: center; gap: .6vw; font-size: clamp(15px, 1.3vw, 26px); padding: .5vh .6vw; border-radius: 6px; background: rgba(238,237,230,.06); white-space: nowrap; overflow: hidden; }
 .lp i { width: 1vw; height: 1vw; min-width: 12px; min-height: 12px; border-radius: 50%; background: var(--pc); flex: none; }
 .lp small { color: var(--chalk-dim); font-size: .7em; }
+.lpAvatar { flex:none; width:clamp(32px,3vw,54px); height:clamp(38px,4vw,64px); overflow:hidden; position:relative; border-radius:8px; background:rgba(212,167,58,.13); }
+.lpAvatar img { display:block; width:100%; height:100%; object-fit:contain; object-position:center bottom; }
+.lpAvatar span,.rowAvatar span { display:grid; place-items:center; width:100%; height:100%; color:var(--chalk); }
+.lpAvatar span[hidden],.rowAvatar span[hidden] { display:none; }
+.rowInfo { display:flex; align-items:center; gap:.45vw; min-width:0; }
+.rowInfoBody { min-width:0; flex:1; }
+.rowAvatar { position:relative; flex:none; width:clamp(31px,2.8vw,50px); height:clamp(38px,4vw,65px); overflow:hidden; border-radius:7px; background:rgba(212,167,58,.09); }
+.rowAvatar img { position:absolute; display:block; width:170%; height:260%; object-fit:contain; object-position:center top; left:-35%; top:-8%; }
+#board.cricketCompact .rowAvatar { width:clamp(24px,2vw,36px); height:clamp(29px,2.8vw,48px); }
+#walkonOverlay { position:fixed; inset:0; display:none; z-index:8; pointer-events:none; align-items:center; justify-content:center; background:radial-gradient(ellipse at 38% 30%,rgba(90,59,34,.91),rgba(20,14,10,.97) 75%); border:clamp(6px,.8vw,15px) solid var(--wood); box-shadow:inset 0 0 0 3px var(--brass); overflow:hidden; }
+#walkonOverlay.on { display:flex; }
+#walkonFigure { position:absolute; left:6%; bottom:0; width:40%; height:91%; object-fit:contain; object-position:center bottom; filter:drop-shadow(10px 8px 24px #0009); animation:walkonSlide .65s cubic-bezier(.2,.85,.25,1) both; }
+#walkonText { position:absolute; left:45%; top:20%; width:50%; display:flex; flex-direction:column; gap:2vh; text-shadow:0 5px 14px #000b; }
+#walkonEyebrow { color:var(--brass); font:800 clamp(18px,2.2vw,40px) var(--display); text-transform:uppercase; letter-spacing:.1em; }
+#walkonNickname { font:900 clamp(45px,6vw,115px)/.95 var(--display); color:var(--chalk); text-transform:uppercase; }
+#walkonTagline { color:var(--chalk-dim); font:400 clamp(19px,2vw,36px)/1.25 var(--chalkface); }
+#walkonPlayed { color:var(--brass); font:800 clamp(17px,2vw,36px) var(--display); }
+@keyframes walkonSlide { from { opacity:0; transform:translateX(-20vw) scale(.93); } to { opacity:1; transform:translateX(0) scale(1); } }
+#over .winnerFigure { width:clamp(110px,13vw,250px); height:clamp(96px,22vh,230px); object-fit:contain; object-position:center bottom; }
+#over .winnerFigure[hidden] { display:none; }
+@media(max-height:650px) { #over { gap:1vh; } #over .winnerFigure { height:16vh; } #walkonText { top:15%; } }
+@media(prefers-reduced-motion:reduce) { #walkonFigure { animation:none !important; } }
 #lobbyGame { margin-top: auto; padding-top: 1.2vh; border-top: 1px solid rgba(238,237,230,.18); }
 #lobbyGame h3 { font-size: clamp(20px, 1.9vw, 38px); }
 #lobbyGame p { color: var(--chalk-dim); font-size: clamp(13px, 1vw, 19px); line-height: 1.4; margin-top: .6vh; max-width: 60ch; }
@@ -213,6 +235,13 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
   </div>
 </aside>
 
+<div id="walkonOverlay" aria-live="polite" aria-label="Player introductions">
+  <img id="walkonFigure" alt="" hidden>
+  <div id="walkonText"><div id="walkonEyebrow">OCHE DARTS NIGHT</div>
+  <div id="walkonNickname">LET'S PLAY DARTS!</div>
+  <div id="walkonTagline">Your players are taking the stage.</div>
+  <div id="walkonPlayed"></div></div>
+</div>
 <button id="fullscreenBtn" type="button" aria-label="Enter fullscreen">Fullscreen</button>
 <button id="mute" type="button">Sound on</button>
 
@@ -282,7 +311,7 @@ function tinted(img, colour) {
 const Sound = (() => {
   const NAMES = ['throw_whoosh', 'impact_board_1', 'impact_board_2', 'impact_board_3', 'impact_wire', 'impact_wall',
     'dart_fall', 'darts_collect', 'bull_sting', 'crowd_cheer', 'crowd_roar', 'crowd_groan', 'crowd_applause',
-    'ui_join', 'ui_turn', 'sting_win', 'ambience_pub', 'music_lobby'];
+    'ui_join', 'ui_turn', 'walkon_sting', 'sting_win', 'ambience_pub', 'music_lobby'];
   let ctx = null, master = null, muted = false, voiceDucked = false, voiceTimer = null;
   const buf = {}, optional = {}, loops = {};
 
@@ -299,7 +328,10 @@ const Sound = (() => {
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.9; master.connect(ctx.destination);
     // Warm the seven approved recorded calls while the TV's sound starts.
     // First-use network fetches must not make a 180 or game shot arrive late.
-    const callerKeys = ['0', '180', 'gameon', 'bust', 'killer', 'gameshot_leg', 'gameshot_match'];
+    const callerKeys = ['0', '180', 'gameon', 'bust', 'killer', 'gameshot_leg', 'gameshot_match', 'letsplay',
+      'walkon_big_kev', 'walkon_bounce_out_barry', 'walkon_double_trouble', 'walkon_the_mullet',
+      'walkon_wobbly_wayne', 'walkon_sir_arrows', 'walkon_the_gladiator', 'walkon_nigel_bust',
+      'walkon_the_shark', 'walkon_bullseye_brenda', 'walkon_treble_tap_tina', 'walkon_dinner_lady'];
     await Promise.all([
       ...NAMES.map(async n => { buf[n] = await fetchBuf(n); }),
       ...callerKeys.map(async n => {
@@ -795,6 +827,35 @@ function land(fl, now) {
    ===================================================================== */
 const $ = id => document.getElementById(id);
 const MARK = ['', '/', 'X', '\u24CD'];
+function avatarFor(p) { return p && (S.avatars || []).find(a => a.id === p.avatarId); }
+function portrait(p, cls) {
+  const a = avatarFor(p), initial = esc((p.name || '?')[0]), colour = esc(p.colour || '#888');
+  return '<div class="' + cls + '" style="--pc:' + colour + '">' +
+    (a ? '<img src="/assets/img/avatars/' + encodeURIComponent(a.file) + '" alt="" loading="lazy" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">' : '') +
+    '<span' + (a ? ' hidden' : '') + '>' + initial + '</span></div>';
+}
+function renderWalkon() {
+  if (!S || S.phase !== 'walkon') return;
+  const g = S.game, index = g ? g.walkonIndex : -1;
+  const actor = index >= 0 ? player(g.order[index]) : null;
+  const a = avatarFor(actor), overlay = $('walkonOverlay'), im = $('walkonFigure');
+  overlay.classList.add('on');
+  if (actor && a) {
+    const src = '/assets/img/avatars/' + encodeURIComponent(a.file);
+    im.hidden = false;
+    if (im.getAttribute('src') !== src) im.src = src;
+    im.alt = a.name;
+    im.onerror = () => { im.hidden = true; };
+  } else im.hidden = true;
+  $('walkonEyebrow').textContent = index >= 0 ? 'OCHE PLAYER ' + (index + 1) + ' OF ' + g.order.length : 'OCHE DARTS NIGHT';
+  $('walkonNickname').textContent = a ? a.nickname : "LET'S PLAY DARTS!";
+  $('walkonTagline').textContent = a ? a.tagline : 'Ladies and gentlemen, welcome to the oche!';
+  $('walkonPlayed').textContent = actor ? 'Played by ' + actor.name : '';
+  if (overlay.dataset.seat !== String(index)) {
+    overlay.dataset.seat = String(index);
+    im.style.animation = 'none'; void im.offsetWidth; im.style.animation = '';
+  }
+}
 
 // All QR pixels are generated locally; neither room code nor join URL is sent
 // to an external QR service. Regenerate only if the room itself changes.
@@ -829,6 +890,7 @@ function renderJoinQr(code) {
 function renderPanel() {
   if (!S) return;
   const lobby = S.phase === 'lobby';
+  if (lobby) $('walkonOverlay').classList.remove('on');
   $('board').classList.toggle('lobbyOn', lobby);
   $('board').classList.toggle('cricketCompact', !!(S.game && S.game.view && S.game.view.type === 'cricket' && S.game.order.length >= 6));
   $('modeLine').textContent = lobby ? '' : S.title;
@@ -840,7 +902,7 @@ function renderPanel() {
 
   if (lobby) {
     $('lobbyPlayers').innerHTML = S.players.length
-      ? S.players.map(p => '<div class="lp" style="--pc:' + p.colour + '"><i></i>' + esc(p.name) + (p.id === S.captainId ? ' <small>captain</small>' : '') + (p.online ? '' : ' <small>offline</small>') + '</div>').join('')
+      ? S.players.map(p => '<div class="lp" style="--pc:' + p.colour + '">' + portrait(p, 'lpAvatar') + '<i></i>' + esc(p.name) + (p.id === S.captainId ? ' <small>captain</small>' : '') + (p.online ? '' : ' <small>offline</small>') + '</div>').join('')
       : '<div class="lp" style="--pc:#555"><i></i>Waiting for players</div>';
     $('lobbyTitle').textContent = S.title + (S.config.legs > 1 ? ', best of ' + (S.config.legs * 2 - 1) : '');
     const mode = (window.CATALOG || []).find(m => m.id === S.config.mode);
@@ -853,6 +915,8 @@ function renderPanel() {
 
   const g = S.game;
   if (!g) return;
+  if (S.phase === 'walkon') { renderWalkon(); $('banner').hidden = true; return; }
+  $('walkonOverlay').classList.remove('on');
   const view = g.view;
   const rowsHtml = g.order.map((id, seat) => {
     const p = player(id) || { name: '?', colour: '#888', online: false };
@@ -870,7 +934,7 @@ function renderPanel() {
     let main = r ? esc(r.main) : '';
     if (S.phase === 'bulloff') main = g.bull && g.bull.dist[id] !== undefined ? (g.bull.dist[id] >= 9999 ? 'miss' : Math.round(g.bull.dist[id]) + 'mm') : '';
     return '<div class="row' + (isCur ? ' current' : '') + (out ? ' out' : '') + (p.online ? '' : ' offline') + '" style="--pc:' + p.colour + '">' +
-      '<div><div class="name">' + esc(p.name) + legs + '</div><div class="sub">' + (r ? esc(r.sub) : '') + '</div>' + marks + '</div>' +
+      '<div class="rowInfo">' + portrait(p, 'rowAvatar') + '<div class="rowInfoBody"><div class="name">' + esc(p.name) + legs + '</div><div class="sub">' + (r ? esc(r.sub) : '') + '</div>' + marks + '</div></div>' +
       '<div class="main">' + main + '</div></div>';
   }).join('');
   $('rows').innerHTML = rowsHtml;
@@ -931,7 +995,9 @@ function renderOver() {
     return '<tr><td>' + esc(p.name) + '</td><td>' + avg + '</td><td>' + st.best + '</td><td>' + st.tons + '</td><td>' + st.s180 + '</td><td>' + st.darts + '</td></tr>';
   }).join('');
   const cap = player(S.captainId);
-  o.innerHTML = '<h1>' + (g.draw ? 'A draw' : w ? esc(w.name) + ' wins' : 'Game over') + '</h1>' +
+  const winnerAvatar = avatarFor(w);
+  const figure = winnerAvatar ? '<img class="winnerFigure" src="/assets/img/avatars/' + encodeURIComponent(winnerAvatar.file) + '" alt="' + esc(winnerAvatar.nickname) + '" onerror="this.hidden=true">' : '';
+  o.innerHTML = figure + '<h1>' + (g.draw ? 'A draw' : w ? esc(w.name) + ' wins' : 'Game over') + '</h1>' +
     '<h2>' + esc(g.endText || S.title) + '</h2>' +
     '<table><tr><th>Player</th><th>3-dart avg</th><th>Best visit</th><th>100+</th><th>180s</th><th>Darts</th></tr>' + rows + '</table>' +
     '<div class="next">' + (cap ? esc(cap.name) + ' can start a rematch or pick a new game.' : '') + '</div>';
@@ -984,7 +1050,19 @@ function onMessage(m) {
       break;
     case 'state': onState(m); break;
     case 'joined': Sound.play('ui_join'); toast(m.name + ' joined'); break;
+    case 'walkonIntro':
+      Sound.stopLoop('music_lobby');
+      Sound.loop('ambience_pub', 0.25);
+      Caller.say('letsplay', "Ladies and gentlemen, let's play darts!");
+      break;
+    case 'walkon': {
+      const p = player(m.id), a = avatarFor(p);
+      Sound.play('walkon_sting', 0.8); Sound.play('crowd_cheer', 0.35);
+      Caller.say(a ? a.voiceKey : null, a ? a.call : ((p && p.name) || 'Our next player'));
+      break;
+    }
     case 'gameStart':
+      $('walkonOverlay').classList.remove('on');
       lastVisit = null;
       Sound.stopLoop('music_lobby');
       Sound.loop('ambience_pub', 0.35);

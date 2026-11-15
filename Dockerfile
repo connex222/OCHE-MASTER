@@ -15,6 +15,8 @@ RUN node test/party-smoke.js
 RUN node test/frontend-polish.js
 # Verify leaving and changing rooms never corrupt an active game.
 RUN node test/navigation-smoke.js
+# Twelve server-authoritative avatars; distinct casting and skippable walk-ons.
+RUN node test/avatar-walkon.js
 # Acquire the Creative Claw assets and the two Bible-specified OFL fonts.
 RUN node deployment/fetch-media.js
 ENV NODE_ENV=production

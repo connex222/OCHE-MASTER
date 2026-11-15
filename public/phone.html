@@ -100,6 +100,28 @@ input:focus { border-color: var(--brass); }
 .rowlist div { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--panel); font-size: 17px; }
 .rowlist div.cur { outline: 2px solid var(--pc); }
 .rowlist b { font-family: var(--display); font-size: 22px; }
+/* Bible 3b: portraits retain their full figures; the grid uses lazy decoding. */
+.avatarPicked { display:flex; gap:16px; align-items:center; min-height:138px; }
+.avatarPicked .portrait { width:110px; height:138px; flex:none; object-fit:contain; object-position:center bottom; }
+.avatarPicked .copy { min-width:0; flex:1; }
+.avatarPicked h3 { color:var(--brass); font-size:24px; }
+.avatarPicked p { font-size:14px; color:var(--dim); }
+.avatarFallback { display:flex; align-items:center; justify-content:center; border:2px solid var(--pc); border-radius:16px; background:color-mix(in srgb, var(--pc) 20%, var(--panel)); color:var(--chalk); font:900 40px var(--display); }
+.avatarFallback[hidden] { display:none; }
+#avatarPicker summary { display:block; color:var(--brass); font:700 18px var(--display); cursor:pointer; padding:14px 0; min-height:44px; }
+#avatarGrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.avatarChoice { position:relative; min-width:0; padding:6px; border:2px solid var(--line); border-radius:12px; background:#161D1B; color:var(--chalk); font:700 12px/1.3 var(--body); cursor:pointer; }
+.avatarChoice img { display:block; width:100%; height:108px; object-fit:contain; object-position:center bottom; }
+.avatarChoice.selected { border-color:var(--brass); background:#302713; }
+.avatarChoice:disabled { opacity:.38; cursor:not-allowed; }
+.avatarChoice:focus-visible { outline:3px solid var(--brass); outline-offset:2px; }
+.avatarChoice .avLabel { display:block; margin-top:4px; min-height:2.5em; }
+#walkonWait { display:none; align-items:center; gap:15px; justify-content:center; border:1px solid var(--brass); border-radius:16px; padding:10px; background:#2a261e; }
+#walkonWait.on { display:flex; }
+#walkonWait img { width:90px; height:132px; object-fit:contain; object-position:center bottom; }
+#walkonWait b { color:var(--brass); font:800 23px var(--display); }
+#walkonSkip[hidden] { display:none; }
+@media(max-width:340px) { #avatarGrid { grid-template-columns:repeat(2,minmax(0,1fr)); } .avatarPicked .portrait { width:90px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -130,6 +152,14 @@ input:focus { border-color: var(--brass); }
 <!-- Lobby -->
 <section class="scr" id="scrLobby">
   <div class="topbar"><div class="me"><i></i><span class="myName"></span></div><button class="iconbtn" data-open="settings" type="button">Settings</button></div>
+  <section class="card" aria-labelledby="avatarHeading" id="yourAvatar">
+    <h2 id="avatarHeading">Your character</h2>
+    <div id="avatarPicked" class="avatarPicked" aria-live="polite"></div>
+    <details id="avatarPicker"><summary>Choose or change character</summary>
+      <div class="err" id="avatarErr" role="status"></div>
+      <div id="avatarGrid" aria-label="Available characters"></div>
+    </details>
+  </section>
   <div id="captainSetup" hidden>
     <h2>Pick the game</h2>
     <div class="modes" id="modeList"></div>
@@ -154,6 +184,8 @@ input:focus { border-color: var(--brass); }
 <section class="scr" id="scrWait">
   <div class="topbar"><div class="me"><i></i><span class="myName"></span></div><div style="display:flex;gap:8px"><button class="iconbtn capOnly" data-open="capMenu" type="button" hidden>Captain</button><button class="iconbtn" data-open="settings" type="button">Settings</button></div></div>
   <div class="card"><p class="dim" id="waitWho"></p><p class="hint" id="waitMsg" style="margin-top:6px"></p></div>
+  <div id="walkonWait"><img id="walkonWaitImg" alt=""><div><b id="walkonWaitName"></b><p class="dim" id="walkonWaitPlayer"></p></div></div>
+  <button class="btn ghost" id="walkonSkip" type="button" hidden>Skip walk-ons (captain)</button>
   <div class="feedback" id="waitFeedback"></div>
   <div class="rowlist" id="waitRows"></div>
 </section>
@@ -249,7 +281,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch { /
 /* =====================================================================
    Networking
    ===================================================================== */
-let ws = null, S = null, me = null, catalog = [], generic = [], joined = false, code = '', replaced = false;
+let ws = null, S = null, me = null, catalog = [], generic = [], avatars = [], joined = false, code = '', replaced = false;
 let awaiting = false, awaitTimer = 0;
 
 function connect() {
@@ -268,12 +300,13 @@ function setNetworkStatus(connected) {
   $('netNotice').hidden = connected;
   if (!connected) $('netNotice').textContent = 'Connection lost — reconnecting. Throws are paused.';
 }
-function sendJoin() { send({ t: 'join', code, name: store.get('name', ''), playerId: pid, difficulty, control: control || 'motion' }); }
+function sendJoin() { send({ t: 'join', code, name: store.get('name', ''), playerId: pid, difficulty, control: control || 'motion', avatarId: store.get('avatarId', null) }); }
 
 function onMessage(m) {
   switch (m.t) {
     case 'welcome':
       joined = true; me = { id: m.id, colour: m.colour }; catalog = m.catalog; generic = m.generic;
+      if (m.avatarId) store.set('avatarId', m.avatarId);
       store.set('room', code);
       document.documentElement.style.setProperty('--pc', m.colour);
       $('joinErr').textContent = '';
@@ -283,6 +316,7 @@ function onMessage(m) {
     case 'error':
       if (!joined) { $('joinErr').textContent = m.message; code = ''; store.set('room', ''); }
       else if (m.code === 'players') $('startErr').textContent = m.message;
+      else if (['avatarTaken', 'avatarLocked', 'avatarInvalid'].includes(m.code)) { $('avatarErr').textContent = m.message; $('avatarPicker').open = true; }
       break;
     case 'state': onState(m); break;
     case 'turn': if (me && m.id === me.id) { buzz([40, 60, 40]); feedback(''); } break;
@@ -308,6 +342,7 @@ function onMessage(m) {
 function onState(m) {
   const previousPhase = S && S.phase;
   S = m;
+  avatars = S.avatars || avatars;
   // A round starting while Settings or Calibration is open must never hide the
   // player's first throw behind a stale overlay.
   if (previousPhase && previousPhase !== m.phase) {
@@ -316,6 +351,7 @@ function onState(m) {
   }
   const mine = S.players.find(p => p.id === (me && me.id));
   if (mine) {
+    if (mine.avatarId && S.phase === 'lobby') store.set('avatarId', mine.avatarId);
     document.documentElement.style.setProperty('--pc', mine.colour);
     document.querySelectorAll('.myName').forEach(el => { el.textContent = mine.name; });
   }
@@ -356,6 +392,40 @@ function route() {
   show('scrWait');
 }
 
+function avatarFor(id) { return avatars.find(a => a.id === id) || null; }
+function avatarPath(a) { return a ? '/assets/img/avatars/' + encodeURIComponent(a.file) : ''; }
+function avatarImage(a, colour, className, lazy = true) {
+  const first = a ? a.name[0] : '?';
+  const cl = className ? ' class="' + className + '"' : '';
+  const img = a ? '<img' + cl + ' src="' + avatarPath(a) + '" loading="' + (lazy ? 'lazy' : 'eager') + '" decoding="async" alt="' + esc(a.nickname) + '" onerror="this.hidden=true;this.nextElementSibling.hidden=false">' : '';
+  return '<span style="--pc:' + esc(colour) + '" class="avatarImage">' + img + '<span class="avatarFallback" style="width:100%;min-height:90px"' + (a ? ' hidden' : '') + '>' + esc(first) + '</span></span>';
+}
+function renderAvatars() {
+  if (!S || !me) return;
+  const mine = S.players.find(p => p.id === me.id);
+  if (!mine) return;
+  const chosen = avatarFor(mine.avatarId);
+  $('avatarPicked').innerHTML =
+    '<div style="width:110px;flex:none">' + avatarImage(chosen, mine.colour, 'portrait', false) + '</div>' +
+    '<div class="copy"><h3>' + esc(chosen ? chosen.nickname : 'Your character') + '</h3>' +
+    '<p>' + esc(chosen ? chosen.name : 'Pick a player below') + '</p><p>' +
+    esc(chosen ? chosen.tagline : 'Your pub darts alter ego') + '</p></div>';
+  const occupied = new Set(S.players.filter(p => p.id !== me.id).map(p => p.avatarId));
+  $('avatarGrid').innerHTML = avatars.map(a => {
+    const taken = occupied.has(a.id);
+    return '<button type="button" class="avatarChoice' + (mine.avatarId === a.id ? ' selected' : '') +
+      '" data-avatar="' + esc(a.id) + '"' + (taken ? ' disabled aria-label="' + esc(a.nickname) + ' taken"' : '') +
+      ' aria-pressed="' + (mine.avatarId === a.id) + '">' +
+      avatarImage(a, mine.colour, '', true) +
+      '<span class="avLabel">' + esc(a.nickname) + (taken ? ' · taken' : '') + '</span></button>';
+  }).join('');
+}
+$('avatarGrid').addEventListener('click', e => {
+  const b = e.target.closest('[data-avatar]');
+  if (!b || b.disabled || !S || S.phase !== 'lobby') return;
+  $('avatarErr').textContent = '';
+  send({ t: 'avatar', avatarId: b.dataset.avatar });
+});
 function rowsHtml() {
   const g = S.game;
   if (!g || !g.view) return '';
@@ -368,6 +438,22 @@ function rowsHtml() {
 
 function renderWait() {
   const g = S.game;
+  const duringWalkon = S.phase === 'walkon';
+  $('walkonSkip').hidden = !duringWalkon || !isCaptain();
+  $('walkonWait').classList.toggle('on', duringWalkon);
+  if (duringWalkon) {
+    const id = g && g.walkonIndex >= 0 ? g.order[g.walkonIndex] : null;
+    const p = S.players.find(x => x.id === id);
+    const a = p ? avatarFor(p.avatarId) : null;
+    $('walkonWaitName').textContent = a ? a.nickname : "Let's play darts!";
+    $('walkonWaitPlayer').textContent = p ? 'Played by ' + p.name : 'Introducing your players';
+    $('walkonWaitImg').hidden = !a;
+    if (a) $('walkonWaitImg').src = avatarPath(a);
+    $('waitWho').textContent = 'Player introductions';
+    $('waitMsg').textContent = 'Watch the TV. The match starts after everyone is introduced.';
+    $('waitRows').innerHTML = rowsHtml();
+    return;
+  }
   const cur = g && S.players.find(p => p.id === g.currentId);
   if (S.phase === 'legOver') {
     const w = S.players.find(p => p.id === g.legWinnerId);
@@ -407,6 +493,7 @@ function feedback(text, sub) {
 /* ---------------- lobby ---------------- */
 let draft = null;
 function renderLobby() {
+  renderAvatars();
   const cap = isCaptain();
   $('captainSetup').hidden = !cap;
   $('guestWait').hidden = cap;
@@ -449,7 +536,8 @@ $('modeOpts').addEventListener('click', e => {
   if (b.dataset.kind === 'opt') draft.options[b.dataset.key] = v; else draft[b.dataset.key] = v;
   pushSetup();
 });
-function pushSetup() { send({ t: 'setup', mode: draft.mode, options: draft.options, legs: draft.legs, bullOff: draft.bullOff }); renderLobby(); }
+function pushSetup() { send({ t: 'setup', mode: draft.mode, options: draft.options, legs: draft.legs, bullOff: draft.bullOff, walkons: draft.walkons }); renderLobby(); }
+$('walkonSkip').addEventListener('click', () => { if (S && S.phase === 'walkon' && isCaptain()) send({ t: 'skipWalkons' }); });
 $('startBtn').addEventListener('click', () => { send({ t: 'start' }); });
 
 /* ---------------- game over ---------------- */

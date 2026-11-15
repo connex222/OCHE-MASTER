@@ -17,6 +17,7 @@ const { WebSocketServer } = require('ws');
 const { scoreAt, MISS } = require('./lib/board');
 const { resolveThrow, DIFFICULTY } = require('./lib/physics');
 const { MODES, GENERIC, catalog, normaliseConfig, titleFor } = require('./lib/modes');
+const { AVATARS, BY_ID, freeAvatars } = require('./lib/avatars');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
@@ -29,11 +30,13 @@ const T = {
   BULL_NEXT: 1800,
   BULL_RESULT: 3000,
   LOBBY_DROP: 45000,
-  ROOM_IDLE: 15 * 60 * 1000
+  ROOM_IDLE: 15 * 60 * 1000,
+  WALKON_INTRO: 1900, // theatrical opener, before players arrive
+  WALKON_CARD: 4000  // about four seconds per character, Bible section 3b
 };
 // Test hook: OCHE_SPEED=20 runs every timer 20x faster.
 const SPEED = Math.max(1, Number(process.env.OCHE_SPEED) || 1);
-for (const k of ['FLIGHT', 'COLLECT', 'LEG_BREAK', 'BULL_NEXT', 'BULL_RESULT']) T[k] = Math.round(T[k] / SPEED);
+for (const k of ['FLIGHT', 'COLLECT', 'LEG_BREAK', 'BULL_NEXT', 'BULL_RESULT', 'WALKON_INTRO', 'WALKON_CARD']) T[k] = Math.round(T[k] / SPEED);
 
 const MAX_PLAYERS = 8;
 const COLOURS = ['#E8443A', '#2F9BFF', '#F5C518', '#3CCB7F', '#B266FF', '#FF8A3D', '#2DD4CF', '#FF5FA2'];
@@ -84,6 +87,12 @@ function newCode() {
 function send(ws, msg) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg)); }
 function broadcast(room, msg) { send(room.tv, msg); for (const p of room.players) send(p.ws, msg); }
 function playerById(room, id) { return room.players.find(p => p.id === id); }
+function autoAvatar(room, requested) {
+  const pool = freeAvatars(room.players);
+  if (!pool.length) return null;
+  const chosen = pool.find(a => a.id === requested);
+  return (chosen || pool[crypto.randomInt(pool.length)]).id;
+}
 function cleanName(s, fallback) {
   const n = String(s || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 14);
   return n || fallback;
@@ -143,7 +152,8 @@ function publicState(room) {
     code: room.code,
     phase: room.phase,
     captainId: room.captainId,
-    players: room.players.map(p => ({ id: p.id, name: p.name, colour: p.colour, online: p.online, difficulty: p.difficulty, control: p.control })),
+    players: room.players.map(p => ({ id: p.id, name: p.name, colour: p.colour, avatarId: p.avatarId, online: p.online, difficulty: p.difficulty, control: p.control })),
+    avatars: AVATARS,
     config: room.config,
     title: titleFor(room.config)
   };
@@ -166,6 +176,7 @@ function publicState(room) {
       legsToWin: g.legsToWin,
       legsWon: g.legsWon,
       turnPhase: g.turnPhase,
+      walkonIndex: g.walkonIndex ?? -1,
       darts: g.darts,
       hint,
       view: g.modeState ? mode.view(g.modeState, ctx) : null,
@@ -198,9 +209,32 @@ function startGame(room) {
     legsWon: Object.fromEntries(order.map(id => [id, 0])),
     modeState: null, undo: [], stats: newStats(order),
     winnerId: null, legWinnerId: null, draw: false, endText: '',
-    bull: null
+    bull: null, walkonIndex: -1
   };
+  // Walk-ons are presentation only; they must finish before an official throw.
+  if (room.config.walkons !== false) {
+    room.phase = 'walkon';
+    room.game.turnPhase = 'walkon';
+    pushState(room);
+    broadcast(room, { t: 'walkonIntro' });
+    later(room, T.WALKON_INTRO, () => nextWalkon(room, 0));
+  } else startMatch(room);
+}
+
+function nextWalkon(room, index) {
+  if (room.phase !== 'walkon' || !room.game) return;
+  if (index >= room.game.order.length) return startMatch(room);
+  room.game.walkonIndex = index;
+  pushState(room);
+  broadcast(room, { t: 'walkon', id: room.game.order[index], index, total: room.game.order.length, duration: T.WALKON_CARD });
+  later(room, T.WALKON_CARD, () => nextWalkon(room, index + 1));
+}
+
+function startMatch(room) {
+  if (!room.game) return;
+  room.game.walkonIndex = -1;
   broadcast(room, { t: 'gameStart', title: titleFor(room.config) });
+  const order = room.game.order;
   if (room.config.bullOff && order.length > 1) {
     room.phase = 'bulloff';
     room.game.bull = { seat: 0, dist: {} };
@@ -426,6 +460,7 @@ const HANDLERS = {
         colour: COLOURS.find(c => !used.has(c)) || COLOURS[0],
         difficulty: DIFFICULTY[m.difficulty] ? m.difficulty : 'normal',
         control: m.control === 'swipe' ? 'swipe' : 'motion',
+        avatarId: autoAvatar(room, m.avatarId),
         ws, online: true
       };
       room.players.push(p);
@@ -435,8 +470,26 @@ const HANDLERS = {
     ws.room = room; ws.role = 'phone'; ws.playerId = p.id;
     refreshCaptain(room);
     touch(room);
-    send(ws, { t: 'welcome', id: p.id, code: room.code, catalog: CATALOG, generic: GENERIC_OPTIONS, colour: p.colour });
+    send(ws, { t: 'welcome', id: p.id, code: room.code, catalog: CATALOG, generic: GENERIC_OPTIONS, colour: p.colour, avatarId: p.avatarId });
     pushState(room);
+  },
+
+  avatar(ws, m, room, player) {
+    if (room.phase !== 'lobby') return send(ws, { t: 'error', code: 'avatarLocked', message: 'Characters can be changed in the lobby.' });
+    const id = String(m.avatarId || '');
+    if (!BY_ID[id]) return send(ws, { t: 'error', code: 'avatarInvalid', message: 'Unknown character.' });
+    if (room.players.some(p => p.id !== player.id && p.avatarId === id)) {
+      return send(ws, { t: 'error', code: 'avatarTaken', message: 'That character is already taken. Pick another.' });
+    }
+    player.avatarId = id;
+    touch(room);
+    pushState(room);
+  },
+
+  skipWalkons(ws, m, room, player) {
+    if (room.phase !== 'walkon' || room.captainId !== player.id) return;
+    clearTimers(room);
+    startMatch(room);
   },
 
   setup(ws, m, room, player) {
