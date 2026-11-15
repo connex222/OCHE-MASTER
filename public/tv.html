@@ -1058,7 +1058,7 @@ function onMessage(m) {
     case 'walkon': {
       const p = player(m.id), a = avatarFor(p);
       Sound.play('walkon_sting', 0.8); Sound.play('crowd_cheer', 0.35);
-      Caller.say(a ? a.voiceKey : null, a ? a.call : ((p && p.name) || 'Our next player'));
+      Caller.say(a ? a.voiceKey : null, a && p ? 'Playing for ' + p.name + '. ' + a.call : 'Introducing our next player');
       break;
     }
     case 'gameStart':
