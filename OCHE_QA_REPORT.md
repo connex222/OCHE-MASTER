@@ -103,3 +103,14 @@ Updated: 15 November 2026 (UTC)
 Listening to the grouped score clips on actual TV speakers is required before calling this AAA-complete. Check starts/ends of scores in the low teens, hyphenated scores such as 47 and 96, and long announcements such as 117 and 159. Check speech against darts impacts and the pub ambience, and listen for any abrupt syllables or inconsistent loudness.
 
 Dynamic player names and phrases such as “you require ...” still use the browser's built-in voice because those phrases change per match. Recorded number scores no longer depend on browser speech during normal operation.
+
+## 15 November 2026 — score caller de-duplication and pacing
+
+- Reported during live play: **100** was heard twice from two voices shortly after one another. The server sends a single `visit` event, but the separate browser-generated next-player checkout reminder could repeat the same number; another TV tab previously wasn't explicitly silenced when replaced. These are code-supported possible causes, not a certified recording of the user's specific incident.
+- Corrected `public/tv.html` to remember the most recently announced visit and ignore identical packets received within 3.5 seconds, while allowing legitimate later identical scores.
+- If a newly active player's checkout number matches a just-announced visit total, the caller uses the player's name and a short “your turn” cue rather than saying the same score in another voice. Different checkout numbers still use the Bible's “you require ...” announcement.
+- Turn reminders are now lower priority than studio-recorded score calls. They wait until the caller is free, and are discarded if the player has already thrown or the game has moved on.
+- An obsolete TV tab now cancels its caller and mutes all sound upon receiving the server's `replaced` notification.
+- Added `node test/caller-dedupe.js` to Render Docker release gates. **11 checks passed**, including a single 100 call without simultaneous browser speech, a second 100 in a later legitimate visit, shared number-reel playback, following checkout prompts, cancelled late reminders and replaced TV muting.
+- The successful deployment `c0b9f8d861411d138c6c298b616c84c04b8d3a82` reached **live** at 21:02 UTC. Rule modules, physics, avatar images and number recordings were not changed.
+- Physical-TV acceptance remains outstanding: listen to consecutive 100 visits and a 100 score followed by a 100 checkout requirement, ideally on the exact device/browser setup that showed the original issue. Distinguish a second TV tab from a second spoken `require` prompt if the problem persists.
