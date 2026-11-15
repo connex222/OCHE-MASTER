@@ -166,12 +166,16 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 #splash p { font-size: clamp(18px, 1.8vw, 34px); color: var(--chalk-dim); }
 #splash button { font: inherit; font-size: clamp(20px, 2vw, 38px); font-weight: 800; padding: 1.6vh 3vw; border-radius: 10px; border: 0; background: var(--brass); color: #1b1206; cursor: pointer; }
 #splash button:focus-visible { outline: 4px solid #fff; outline-offset: 4px; }
-#mute { position: fixed; bottom: 1.5vh; right: calc(clamp(340px, 32vw, 640px) + 1.5vw); z-index: 5; font: 700 14px var(--display); color: var(--chalk-dim); background: rgba(0,0,0,.5); border: 1px solid rgba(238,237,230,.3); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+#mute, #fullscreenBtn { position: fixed; bottom: 1.5vh; z-index: 5; min-height: 44px; font: 700 14px var(--display); color: var(--chalk-dim); background: rgba(0,0,0,.65); border: 1px solid rgba(238,237,230,.3); border-radius: 6px; padding: 8px 10px; cursor: pointer; }
+#mute { right: calc(clamp(340px, 32vw, 640px) + 1.5vw); }
+#fullscreenBtn { right: calc(clamp(340px, 32vw, 640px) + 1.5vw + 88px); }
+#mute:focus-visible, #fullscreenBtn:focus-visible { outline: 3px solid var(--brass); outline-offset: 3px; }
 
 @media (orientation: portrait) {
   #panel { top: auto; left: 0; width: auto; height: 44vh; }
   .area { right: 0; bottom: 44vh; }
   #mute { right: 1.5vw; bottom: calc(44vh + 1.5vh); }
+  #fullscreenBtn { right: calc(1.5vw + 88px); bottom: calc(44vh + 1.5vh); }
 }
 @media (prefers-reduced-motion: reduce) {
   #callout.go { animation-duration: 2.2s; animation-timing-function: linear; }
@@ -208,6 +212,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
   </div>
 </aside>
 
+<button id="fullscreenBtn" type="button" aria-label="Enter fullscreen">Fullscreen</button>
 <button id="mute" type="button">Sound on</button>
 
 <div id="splash">
@@ -1048,6 +1053,20 @@ async function begin() {
   if (S && S.phase === 'lobby') Sound.loop('music_lobby', 0.4);
   if (window.speechSynthesis) speechSynthesis.getVoices();
 }
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen();
+  } catch { toast('Fullscreen is unavailable on this device'); }
+  updateFullscreenButton();
+}
+function updateFullscreenButton() {
+  const full = !!document.fullscreenElement;
+  $('fullscreenBtn').textContent = full ? 'Exit fullscreen' : 'Fullscreen';
+  $('fullscreenBtn').setAttribute('aria-label', full ? 'Exit fullscreen' : 'Enter fullscreen');
+}
+$('fullscreenBtn').addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', updateFullscreenButton);
 $('startBtn').addEventListener('click', begin);
 $('splash').addEventListener('click', e => { if (e.target.id !== 'startBtn') begin(); });
 $('mute').addEventListener('click', () => {
@@ -1057,7 +1076,7 @@ $('mute').addEventListener('click', () => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'm' || e.key === 'M') $('mute').click();
-  if (e.key === 'f' || e.key === 'F') document.documentElement.requestFullscreen().catch(() => {});
+  if (e.key === 'f' || e.key === 'F') toggleFullscreen();
 });
 
 // Mode descriptions for the lobby panel.
