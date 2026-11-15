@@ -9,6 +9,8 @@ COPY . .
 RUN node test/bible-regression.js
 # Exercise multiplayer over real WebSockets before this image can go live.
 RUN npm test
+# Full party-night WebSocket smoke: eight phones, seven modes, reconnects, captain tools.
+RUN node test/party-smoke.js
 # Acquire the Creative Claw assets and the two Bible-specified OFL fonts.
 RUN node deployment/fetch-media.js
 ENV NODE_ENV=production
