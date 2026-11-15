@@ -31,7 +31,7 @@ Updated: 15 November 2026 (UTC)
 
 - The regulation dartboard and scoring geometry remain code-drawn; AI artwork does **not** replace the playable board.
 - All nine named Bible artwork assets were delivered with the required canvas sizes and dart anchors.
-- The new Bible build installs all 19 SFX/music tracks (including walk-on sting), 20 recorded caller clips (the original seven plus Let's Play Darts and 12 walk-on lines), and both specified fonts. Unrecorded numeric calls continue to use browser speech.
+- The new Bible build installs all 19 SFX/music tracks (including walk-on sting), 44 recorded caller clips (20 original/intro/character clips plus 24 numeric score recordings), and both specified fonts — 63 audio assets in total. Remaining unrecorded numbers continue to use browser speech.
 - QR join link targets `/phone?code=ROOM`, preserving manual room-code entry. The QR is generated entirely within the TV page using a bundled MIT-licensed library (local SVG), rather than exposing the current room code to an external image service. It regenerates only when the room changes, with a white scanning margin.
 - The right-side X01 finishing guide uses server-provided hints, rather than a second scoring engine.
 - Recorded or browser-spoken visit totals follow the server's **rules-credited** scores, including double-in and Shanghai.
@@ -69,7 +69,7 @@ Updated: 15 November 2026 (UTC)
 - Corrected avatar-picker redraws: repeated lobby WebSocket state messages no longer recreate and reload all twelve character thumbnails. A changed character or an occupied/free slot still updates immediately.
 - Corrected the opening caller sequence: the recorded "Game on" call starts first, and the first player's bull-off/checkout call waits until it has finished. Stale scheduled turn calls are discarded after a match transition.
 - The seven original game modes, physics parameters and avatars are unchanged.
-- New frontend QA: **7 passed**, including an executable simulated-DOM test proving stable avatar images and live selection updates.
+- New frontend QA: **8 passed**, including an executable simulated-DOM test proving stable avatar images and live selection updates.
 - New full walk-on QA: **5 passed** in Render, verifying no scoring during entrances, all three sequential character presentations, automatic handover to playable bull-off, a valid first dart, and rematch introductions that the captain can skip.
 - Render confirmed `727e5a7135c2b524112a00218055a41bbb7e465b` live after all release gates passed.
 
@@ -80,3 +80,11 @@ Updated: 15 November 2026 (UTC)
 - Test the character picker on iPhone Safari and Android Chrome with two or more real players, including changing characters and reconnecting.
 - Complete full three-player Cricket and four-player Killer matches on physical phones, including calibration, fairness, results and replay.
 - If the browser-generated ordinary score totals sound noticeably inconsistent, consider replacing those with a larger matching recorded numeric library. The Bible makes that optional; no new modes are needed.
+
+## 15 November 2026 — Creative Claw number caller pack
+
+- Generated and installed 24 authentic British-style darts number announcements using the same ElevenLabs v4 voice ID as the 12 OCHE walk-on clips.
+- Recorded scores: 12, 18, 20, 24, 26, 32, 36, 40, 45, 50, 57, 60, 80, 81, 85, 95, 100, 120, 121, 125, 140, 150, 160, 170. The existing 180 and "No score" calls remain untouched.
+- Every recording is mapped to the exact `<score>.mp3` filename in the production downloader, validated by an additional frontend release check. Render confirmed **63 audio clips and 2 fonts**, and production commit `c33dbd55df3afb11c5c45ab5bf7a6a6214dbf269` became live.
+- The TV loads the numeric clips progressively after the essential sound assets, avoiding a longer start screen. Uncovered scores still use browser speech rather than giving no call.
+- The clips are AI-generated studio voice files; they are not human voice-actor recordings. Final audibility, pronunciation, relative loudness and pacing on TV hardware still require listening checks.
