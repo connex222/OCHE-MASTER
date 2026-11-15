@@ -9,9 +9,10 @@ const read = p => fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 const phone=read('public/phone.html');
 const tv=read('public/tv.html');
 const extract = (html, label) => {
-  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)];
+  const scripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
+    .map(m => m[1]).filter(body => body.trim().length > 0);
   assert.equal(scripts.length,1,label+' contains exactly one inline JS program');
-  return scripts[0][1];
+  return scripts[0];
 };
 new vm.Script(extract(phone,'Phone'),{filename:'phone.html'});
 new vm.Script(extract(tv,'TV'),{filename:'tv.html'});
