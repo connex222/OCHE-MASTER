@@ -104,6 +104,9 @@ input:focus { border-color: var(--brass); }
 .avatarPicked { display:flex; gap:16px; align-items:center; min-height:138px; }
 .avatarPicked .portrait { width:110px; height:138px; flex:none; object-fit:contain; object-position:center bottom; }
 .avatarPicked .copy { min-width:0; flex:1; }
+.avatarImage { display:block; width:100%; }
+.avatarPicked .avatarImage { min-height:138px; }
+.avatarChoice .avatarImage { min-height:108px; }
 .avatarPicked h3 { color:var(--brass); font-size:24px; }
 .avatarPicked p { font-size:14px; color:var(--dim); }
 .avatarFallback { display:flex; align-items:center; justify-content:center; border:2px solid var(--pc); border-radius:16px; background:color-mix(in srgb, var(--pc) 20%, var(--panel)); color:var(--chalk); font:900 40px var(--display); }
@@ -392,6 +395,10 @@ function route() {
   show('scrWait');
 }
 
+// Preserve decoded character images while scores, options and connection
+// states update. Rebuilding all twelve PNGs on each WebSocket state caused
+// visible flashes and unnecessary work on lower-powered phones.
+let renderedAvatarSelection = '', renderedAvatarGrid = '';
 function avatarFor(id) { return avatars.find(a => a.id === id) || null; }
 function avatarPath(a) { return a ? '/assets/img/avatars/' + encodeURIComponent(a.file) : ''; }
 function avatarImage(a, colour, className, lazy = true) {
@@ -405,20 +412,28 @@ function renderAvatars() {
   const mine = S.players.find(p => p.id === me.id);
   if (!mine) return;
   const chosen = avatarFor(mine.avatarId);
-  $('avatarPicked').innerHTML =
-    '<div style="width:110px;flex:none">' + avatarImage(chosen, mine.colour, 'portrait', false) + '</div>' +
-    '<div class="copy"><h3>' + esc(chosen ? chosen.nickname : 'Your character') + '</h3>' +
-    '<p>' + esc(chosen ? chosen.name : 'Pick a player below') + '</p><p>' +
-    esc(chosen ? chosen.tagline : 'Your pub darts alter ego') + '</p></div>';
+  const selectionKey = [mine.id, mine.avatarId, mine.colour].join('|');
+  if (renderedAvatarSelection !== selectionKey) {
+    $('avatarPicked').innerHTML =
+      '<div style="width:110px;flex:none">' + avatarImage(chosen, mine.colour, 'portrait', false) + '</div>' +
+      '<div class="copy"><h3>' + esc(chosen ? chosen.nickname : 'Your character') + '</h3>' +
+      '<p>' + esc(chosen ? chosen.name : 'Pick a player below') + '</p><p>' +
+      esc(chosen ? chosen.tagline : 'Your pub darts alter ego') + '</p></div>';
+    renderedAvatarSelection = selectionKey;
+  }
   const occupied = new Set(S.players.filter(p => p.id !== me.id).map(p => p.avatarId));
-  $('avatarGrid').innerHTML = avatars.map(a => {
-    const taken = occupied.has(a.id);
-    return '<button type="button" class="avatarChoice' + (mine.avatarId === a.id ? ' selected' : '') +
-      '" data-avatar="' + esc(a.id) + '"' + (taken ? ' disabled aria-label="' + esc(a.nickname) + ' taken"' : '') +
-      ' aria-pressed="' + (mine.avatarId === a.id) + '">' +
-      avatarImage(a, mine.colour, '', true) +
-      '<span class="avLabel">' + esc(a.nickname) + (taken ? ' · taken' : '') + '</span></button>';
-  }).join('');
+  const galleryKey = [selectionKey, avatars.map(a => a.id).join(','), [...occupied].sort().join(',')].join('|');
+  if (renderedAvatarGrid !== galleryKey) {
+    $('avatarGrid').innerHTML = avatars.map(a => {
+      const taken = occupied.has(a.id);
+      return '<button type="button" class="avatarChoice' + (mine.avatarId === a.id ? ' selected' : '') +
+        '" data-avatar="' + esc(a.id) + '"' + (taken ? ' disabled aria-label="' + esc(a.nickname) + ' taken"' : '') +
+        ' aria-pressed="' + (mine.avatarId === a.id) + '">' +
+        avatarImage(a, mine.colour, '', true) +
+        '<span class="avLabel">' + esc(a.nickname) + (taken ? ' · taken' : '') + '</span></button>';
+    }).join('');
+    renderedAvatarGrid = galleryKey;
+  }
 }
 $('avatarGrid').addEventListener('click', e => {
   const b = e.target.closest('[data-avatar]');

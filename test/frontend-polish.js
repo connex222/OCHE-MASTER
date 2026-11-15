@@ -57,4 +57,46 @@ assert.match(tv,/class="winnerFigure"/);
 assert.match(tv,/portrait\(p, 'rowAvatar'\)/);
 assert.match(tv,/walkon_sting/);
 console.log('PASS frontend: twelve character assets, picker, walk-ons and winner art');
-console.log('OCHE FRONTEND/NAVIGATION QA: 5 checks passed');
+// Render the avatar picker in a simulated DOM: repeat state messages must
+// preserve the decoded character images and the player's open picker.
+const aStart=phone.indexOf('let renderedAvatarSelection =');
+const aEnd=phone.indexOf("$('avatarGrid').addEventListener(",aStart);
+assert.ok(aStart>0&&aEnd>aStart,'Avatar gallery render functions are present');
+const slots=Object.fromEntries(['avatarPicked','avatarGrid'].map(id=>[id,{
+  writes:0,_html:'',
+  get innerHTML(){return this._html;},
+  set innerHTML(value){this._html=value;this.writes++;}
+}]));
+const fakeAvatars=['a','b','c','d'].map(id=>({
+  id,name:'Character '+id,nickname:'Nickname '+id,file:'avatar_'+id+'.png',tagline:'Pub player'
+}));
+const avatarContext=vm.createContext({
+  avatars:fakeAvatars,S:{players:[
+    {id:'p1',avatarId:'a',colour:'#D4A73A'},
+    {id:'p2',avatarId:'b',colour:'#127A3E'}
+  ]},me:{id:'p1'},$:(id)=>slots[id],esc:s=>String(s)
+});
+vm.runInContext(phone.slice(aStart,aEnd),avatarContext,{timeout:1000});
+const renderGallery=()=>vm.runInContext('renderAvatars()',avatarContext,{timeout:1000});
+renderGallery();
+assert.equal(slots.avatarGrid.writes,1);
+assert.equal(slots.avatarPicked.writes,1);
+renderGallery();renderGallery();
+assert.equal(slots.avatarGrid.writes,1,'Redundant state updates should not recreate thumbnails');
+assert.equal(slots.avatarPicked.writes,1,'Redundant state updates should not recreate selected portrait');
+avatarContext.S.players[1].avatarId='c';
+renderGallery();
+assert.equal(slots.avatarGrid.writes,2,'Another player choosing a character updates availability');
+assert.equal(slots.avatarPicked.writes,1,'Other players should not replace my selected portrait');
+avatarContext.S.players[0].avatarId='d';
+renderGallery();
+assert.equal(slots.avatarGrid.writes,3);
+assert.equal(slots.avatarPicked.writes,2);
+console.log('PASS frontend: avatar gallery resists repeated redraws but responds to selection changes');
+assert.match(tv,/gameOnVoiceUntil = performance\.now\(\) \+ 1600/);
+assert.match(tv,/clearTimeout\(scheduledTurnCall\)/);
+assert.match(tv,/S\.game\.currentId === m\.id/);
+assert.match(tv,/Caller\.cancel\(\);\s*\$\('walkonOverlay'\)/);
+console.log('PASS frontend: caller starts "Game on" first and discards stale turn calls');
+
+console.log('OCHE FRONTEND/NAVIGATION QA: 7 checks passed');

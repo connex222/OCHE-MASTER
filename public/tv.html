@@ -1032,6 +1032,9 @@ function toast(text) {
    Networking
    ===================================================================== */
 let ws = null, replaced = false;
+// Prevent a delayed first-turn announcement from interrupting "Game on".
+// Announcements are only made if the player still has the turn.
+let scheduledTurnCall = null, gameOnVoiceUntil = 0;
 let host = null;
 try { host = JSON.parse(sessionStorage.getItem('oche.host') || 'null'); } catch { host = null; }
 
@@ -1051,6 +1054,8 @@ function onMessage(m) {
     case 'state': onState(m); break;
     case 'joined': Sound.play('ui_join'); toast(m.name + ' joined'); break;
     case 'walkonIntro':
+      clearTimeout(scheduledTurnCall);
+      Caller.cancel();
       Sound.stopLoop('music_lobby');
       Sound.loop('ambience_pub', 0.25);
       Caller.say('letsplay', "Ladies and gentlemen, let's play darts!");
@@ -1062,18 +1067,31 @@ function onMessage(m) {
       break;
     }
     case 'gameStart':
+      clearTimeout(scheduledTurnCall);
+      Caller.cancel();
       $('walkonOverlay').classList.remove('on');
       lastVisit = null;
       Sound.stopLoop('music_lobby');
       Sound.loop('ambience_pub', 0.35);
       callout(m.title, 'Game on', 'gold');
-      setTimeout(() => Caller.say('gameon', 'Game on'), 600);
+      // Speak this first, then allow the first player's introduction.
+      // The old 600ms delay sometimes cut across the bull-off announcement.
+      gameOnVoiceUntil = performance.now() + 1600;
+      Caller.say('gameon', 'Game on');
       break;
     case 'turn': {
       Sound.play('ui_turn', 0.7);
       const p = player(m.id);
-      if (p && m.require) setTimeout(() => Caller.say(null, p.name + ', you require ' + words(m.require)), 400);
-      else if (p && m.bulloff) setTimeout(() => Caller.say(null, p.name + ', for the bull'), 300);
+      const announcement = p && m.require ? p.name + ', you require ' + words(m.require)
+        : p && m.bulloff ? p.name + ', for the bull' : '';
+      clearTimeout(scheduledTurnCall);
+      if (announcement) {
+        const delay = Math.max(350, gameOnVoiceUntil - performance.now());
+        scheduledTurnCall = setTimeout(() => {
+          if (S && S.game && S.game.currentId === m.id &&
+              (S.phase === 'playing' || S.phase === 'bulloff')) Caller.say(null, announcement);
+        }, delay);
+      }
       break;
     }
     case 'aim': {
@@ -1084,7 +1102,10 @@ function onMessage(m) {
     }
     case 'dart': onDart(m); break;
     case 'visit': onVisit(m); break;
-    case 'legEnd': onLegEnd(m); break;
+    case 'legEnd':
+      clearTimeout(scheduledTurnCall);
+      onLegEnd(m);
+      break;
     case 'bullResult': {
       const p = player(m.firstId);
       if (p) { callout(p.name, 'throws first', 'gold'); Caller.say(null, p.name + ' to throw first. Game on'); }
