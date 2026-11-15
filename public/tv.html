@@ -79,6 +79,10 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 .step { font-size: clamp(15px, 1.25vw, 24px); line-height: 1.35; }
 .url { color: var(--brass); font-weight: 700; word-break: break-all; }
 #code { font-family: var(--display); font-weight: 800; font-size: clamp(64px, 8vw, 160px); letter-spacing: .12em; line-height: 1; color: #fff; text-shadow: 0 0 .2em rgba(255,255,255,.25); }
+#qrBox { display: flex; flex-direction: column; align-items: center; gap: .8vh; margin-top: .4vh; }
+#qrFrame { width: clamp(132px, 12vw, 220px); aspect-ratio: 1; padding: 10px; border-radius: 12px; background: #fff; box-shadow: 0 .4vw 1.2vw rgba(0,0,0,.35); }
+#qrImg { width: 100%; height: 100%; display: block; border-radius: 6px; background: #fff; }
+#qrCaption { font-size: clamp(12px, .95vw, 18px); color: var(--chalk-dim); text-align: center; }
 #lobbyPlayers { display: grid; grid-template-columns: 1fr 1fr; gap: .8vh .8vw; }
 .lp { display: flex; align-items: center; gap: .6vw; font-size: clamp(15px, 1.3vw, 26px); padding: .5vh .6vw; border-radius: 6px; background: rgba(238,237,230,.06); white-space: nowrap; overflow: hidden; }
 .lp i { width: 1vw; height: 1vw; min-width: 12px; min-height: 12px; border-radius: 50%; background: var(--pc); flex: none; }
@@ -169,6 +173,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
     <div id="lobby">
       <div class="step">On your phone, open <span class="url" id="joinUrl"></span> and enter this code:</div>
       <div id="code">----</div>
+      <div id="qrBox"><div id="qrFrame"><img id="qrImg" alt="QR code to join OCHE on your phone"></div><div id="qrCaption">Scan to open OCHE on your phone with the room code filled in.</div></div>
       <div id="lobbyPlayers"></div>
       <div id="lobbyGame"><h3 id="lobbyTitle"></h3><p id="lobbyRules"></p><p id="lobbyWait"></p></div>
     </div>
@@ -724,8 +729,11 @@ function renderPanel() {
   $('board').classList.toggle('lobbyOn', lobby);
   $('modeLine').textContent = lobby ? '' : S.title;
   const url = location.host + '/phone';
+  const joinHref = location.origin + '/phone?code=' + encodeURIComponent(S.code || '');
   $('joinUrl').textContent = url;
   $('code').textContent = S.code;
+  $('qrImg').src = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=0&data=' + encodeURIComponent(joinHref);
+  $('qrImg').alt = 'QR code to join OCHE room ' + S.code;
   $('joinLine').textContent = lobby ? '' : 'Join next game: ' + url + '  code ' + S.code;
 
   if (lobby) {
