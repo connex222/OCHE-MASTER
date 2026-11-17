@@ -131,3 +131,18 @@ Dynamic player names and phrases such as “you require ...” still use the bro
 - Test iPhone Safari motion permissions and Android Chrome motion calibration on the actual phones used at games night.
 - Verify swipe release accuracy with real touches, especially fast gestures and two-finger interruptions.
 - Complete three-player Cricket and four-player Killer matches with authentic players before claiming full AAA acceptance.
+
+## 17 November 2026 — approved numbered OCHE crest
+
+- Added the user's preferred original OCHE crest — the numbered dartboard with three red-flight darts and the gold OCHE nameplate — as a self-hosted game asset: \`public/assets/img/oche-numbered-crest.jpg\`.
+- **TV start screen:** approved crest is central and prominent, retaining the necessary sound/fullscreen Start action. If loading fails, the OCHE heading remains.
+- **TV lobby:** a large, contained crest appears in the dartboard area while the original room code, local QR, player list and mode selection stay on the right chalkboard.
+- **TV gameplay:** a compact crest accompanies the OCHE heading on the chalkboard in every game. The full-size crest is hidden during live throws, preserving the regulation canvas board and the fullscreen/mute controls.
+- **Phone joining:** crest appears above the room-code and name fields, with responsive sizing and the form fully functional. No gameplay gesture region is covered.
+- The existing \`logo.png\` and all original gameplay graphics remain in place; no physics, score rules, narration, avatars or number recordings changed.
+- Added \`node test/brand-crest.js\` to the Render release gate; **5 test groups passed** for asset presence, Bible consistency, four branding placements, responsive control-safe structure and both scripts parsing.
+- Render release \`cdd5528daf7a46fd83afad7e70b43bbbe48e5cfc\` reached **live on 17 November 2026**.
+
+### Visual acceptance outstanding
+
+Review the crest's exact scale and backdrop on a real 720p/1080p television, a portrait tablet and a small phone. A code-level layout check cannot certify how the JPEG's dark-green background blends against every display, or its readability at a distance. Confirm the QR and live scoreboard are still unobscured before declaring the visual sign-off complete.
