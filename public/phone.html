@@ -23,6 +23,13 @@ body { -webkit-user-select: none; user-select: none; touch-action: manipulation;
 .scr { display: none; position: fixed; inset: 0; padding: calc(16px + var(--safe-t)) 18px calc(16px + var(--safe-b)); overflow-y: auto; flex-direction: column; gap: 14px; }
 .scr.on { display: flex; }
 h1 { font-family: var(--display); font-weight: 900; font-size: 64px; letter-spacing: .06em; line-height: 1; }
+/* The approved numbered OCHE crest replaces plain wordmark on the join screen.
+   Limit its height so the code, name and Join button stay comfortably usable. */
+#joinBrand { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+#joinBrand img { display:block; width:min(53vw,24vh,192px); aspect-ratio:1; height:auto; object-fit:contain;
+  border-radius:14px; border:1px solid rgba(224,179,65,.24); box-shadow:0 8px 25px #0008; }
+#joinBrand img[hidden] { display:none; }
+#joinBrand h1 { font-size:clamp(45px,13vw,64px); }
 h2 { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1.1; }
 h3 { font-family: var(--display); font-weight: 700; font-size: 20px; }
 p, li { font-size: 17px; line-height: 1.45; }
@@ -134,7 +141,10 @@ input:focus { border-color: var(--brass); }
 
 <!-- Join -->
 <section class="scr" id="scrJoin">
-  <h1>OCHE</h1>
+  <div id="joinBrand">
+    <img src="/assets/img/oche-numbered-crest.jpg" width="1254" height="1254" alt="OCHE darts" decoding="async" onerror="this.hidden=true;this.nextElementSibling.hidden=false">
+    <h1 hidden>OCHE</h1>
+  </div>
   <p class="dim">Your phone is the dart. Enter the code on the TV.</p>
   <div><label for="code">Game code</label><input id="code" maxlength="4" autocomplete="off" autocapitalize="characters" inputmode="text"></div>
   <div><label for="name">Your name</label><input id="name" maxlength="14" autocomplete="nickname"></div>

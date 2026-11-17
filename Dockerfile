@@ -27,6 +27,8 @@ RUN node test/full-walkon.js
 RUN node test/numeric-caller.js
 # Confirm a recorded score never speaks twice or overlaps a new-turn reminder.
 RUN node test/caller-dedupe.js
+# Verify the approved numbered brand crest and its responsive, non-obstructive placement.
+RUN node test/brand-crest.js
 # Acquire the Creative Claw assets and the two Bible-specified OFL fonts.
 RUN node deployment/fetch-media.js
 ENV NODE_ENV=production

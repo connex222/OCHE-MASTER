@@ -39,10 +39,17 @@ All files go in `public/assets/img/`. Exact filenames matter. Every file is opti
 | `sisal.png` | 1024 × 1024 | PNG, greyscale | Close-up sisal fibre texture, laid over the board |
 | `chalkboard.jpg` | 1200 × 2000 | JPG | Slate chalkboard surface for the scoreboard |
 | `logo.png` | 1600 × 500 | PNG, transparent | OCHE wordmark |
+| `oche-numbered-crest.jpg` | Square | JPG | Approved premium OCHE numbered dartboard crest with three darts, gold trim and large OCHE lettering; display as branding only, not as the playable scoring board |
 | `dart_fly_body.png` | 512 × 512 | PNG, transparent | Dart seen from directly behind, in flight, no flights |
 | `dart_fly_flight.png` | 512 × 512 | PNG, transparent | Just the flights from the same view, pure white |
 | `dart_stuck_body.png` | 512 × 512 | PNG, transparent | Dart stuck in a board, seen from the front, no flights |
 | `dart_stuck_flight.png` | 512 × 512 | PNG, transparent | Just the flights from the same view, pure white |
+
+### Approved numbered OCHE identity
+
+The first ChatGPT-designed crest, with the traditional numbers around the dartboard and three red-flighted darts in the bull, is the approved prominent brand image. The optimized, self-hosted copy is `public/assets/img/oche-numbered-crest.jpg` (source generated at 1254 × 1254 pixels). Use it on the TV start screen and the dartboard-side TV lobby, as a small emblem alongside the chalkboard's OCHE heading during gameplay, and on the phone's join screen. Keep the earlier `logo.png` as an alternative/fallback asset.
+
+**Do not place this decorative logo over the live scoring board.** Gameplay continues to use the code-drawn regulation board and the previously approved dart and avatar images. Responsive layouts must keep room code, QR scan, score, checkout guidance, captain controls and fullscreen controls unobstructed.
 
 ### Why the darts come in two layers
 
