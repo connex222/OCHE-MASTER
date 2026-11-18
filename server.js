@@ -102,6 +102,17 @@ function later(room, ms, fn) {
   room.timers.add(id);
 }
 function clearTimers(room) { for (const id of room.timers) clearTimeout(id); room.timers.clear(); }
+function returnRoomToLobby(room) {
+  // A return is authoritative: cancel queued dart flights, walk-ons and
+  // delayed round transitions before publishing the lobby to all clients.
+  clearTimers(room);
+  room.game = null;
+  room.phase = 'lobby';
+  room.players = room.players.filter(p => p.online);
+  refreshCaptain(room);
+  touch(room);
+  pushState(room);
+}
 function touch(room) { room.lastActive = Date.now(); }
 
 function createRoom() {
@@ -598,6 +609,21 @@ wss.on('connection', ws => {
     const fn = HANDLERS[m.t];
     if (!fn) return;
     if (m.t === 'host' || m.t === 'join') return fn(ws, m);
+    // TV must prove possession of the private room host key. A phone must
+    // be the current captain; guests cannot interrupt somebody else's match.
+    if (m.t === 'returnLobby') {
+      const room = ws.room;
+      if (!room) return;
+      if (ws.role === 'tv') {
+        if (room.tv !== ws || m.hostKey !== room.hostKey) return;
+      } else if (ws.role === 'phone') {
+        const player = playerById(room, ws.playerId);
+        if (!player || player.id !== room.captainId || !player.online || player.ws !== ws) return;
+      } else return;
+      if (room.phase !== 'lobby') returnRoomToLobby(room);
+      else pushState(room);
+      return;
+    }
     const room = ws.room;
     if (!room || ws.role !== 'phone') return;
     const player = playerById(room, ws.playerId);
