@@ -90,11 +90,11 @@ const state = (code, test) => m => m.t === 'state' && m.code === code && test(m)
   await new Promise(resolve=>setTimeout(resolve,65));
   assert.equal(tvA.q.slice(startCount).filter(m=>m.t==='state'&&m.phase==='lobby').length,0,
     'TV return-to-lobby accepted an invalid host key');
-  const back=await sendWait(p3,{t:'returnLobby'},tvA,state(a,m=>m.phase==='lobby'&&m.game===null));
+  const back=await sendWait(p3,{t:'returnLobby'},tvA,state(a,m=>m.phase==='lobby'&&!m.game));
   assert.equal(back.players.length,2,'Captained lobby return removed connected players');
   console.log('PASS navigation: only captain can return all connected players to lobby');
   await sendWait(p3,{t:'start'},tvA,state(a,m=>m.phase==='playing'));
-  const backByTV=await sendWait(tvA,{t:'returnLobby',hostKey},tvA,state(a,m=>m.phase==='lobby'&&m.game===null));
+  const backByTV=await sendWait(tvA,{t:'returnLobby',hostKey},tvA,state(a,m=>m.phase==='lobby'&&!m.game));
   assert.equal(backByTV.players.length,2,'TV return-to-lobby did not preserve connected players');
   console.log('PASS navigation: authorised TV Back to Lobby resets match without dropping players');
   console.log('OCHE NAVIGATION WEBSOCKET QA: 7 checks passed');
