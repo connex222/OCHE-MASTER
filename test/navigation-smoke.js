@@ -30,7 +30,8 @@ const state = (code, test) => m => m.t === 'state' && m.code === code && test(m)
 (async () => {
   if (!server.listening) await new Promise(resolve => server.once('listening',resolve));
   const tvA=await connect(), tvB=await connect();
-  const a=(await sendWait(tvA,{t:'host'},tvA,m=>m.t==='hosted')).code;
+  const hostedA=await sendWait(tvA,{t:'host'},tvA,m=>m.t==='hosted');
+  const a=hostedA.code, hostKey=hostedA.hostKey;
   const b=(await sendWait(tvB,{t:'host'},tvB,m=>m.t==='hosted')).code;
   assert.notEqual(a,b);
   const p1=await connect(), p2=await connect(), p3=await connect();
@@ -78,8 +79,25 @@ const state = (code, test) => m => m.t === 'state' && m.code === code && test(m)
   assert.equal(again.game.order.length,2);
   console.log('PASS navigation: a player can reclaim an offline seat during a match');
 
-  await sendWait(p3,{t:'end'},tvA,state(a,m=>m.phase==='gameOver'));
-  console.log('OCHE NAVIGATION WEBSOCKET QA: 5 checks passed');
+  // Only the captain or the TV with its private host key may reset the room.
+  let startCount=tvA.q.length;
+  p2.send(JSON.stringify({t:'returnLobby'})); // p2 is not captain.
+  await new Promise(resolve=>setTimeout(resolve,65));
+  assert.equal(tvA.q.slice(startCount).filter(m=>m.t==='state'&&m.phase==='lobby').length,0,
+    'Guest phone was allowed to interrupt the match');
+  startCount=tvA.q.length;
+  tvA.send(JSON.stringify({t:'returnLobby',hostKey:'wrong-key'}));
+  await new Promise(resolve=>setTimeout(resolve,65));
+  assert.equal(tvA.q.slice(startCount).filter(m=>m.t==='state'&&m.phase==='lobby').length,0,
+    'TV return-to-lobby accepted an invalid host key');
+  const back=await sendWait(p3,{t:'returnLobby'},tvA,state(a,m=>m.phase==='lobby'&&m.game===null));
+  assert.equal(back.players.length,2,'Captained lobby return removed connected players');
+  console.log('PASS navigation: only captain can return all connected players to lobby');
+  await sendWait(p3,{t:'start'},tvA,state(a,m=>m.phase==='playing'));
+  const backByTV=await sendWait(tvA,{t:'returnLobby',hostKey},tvA,state(a,m=>m.phase==='lobby'&&m.game===null));
+  assert.equal(backByTV.players.length,2,'TV return-to-lobby did not preserve connected players');
+  console.log('PASS navigation: authorised TV Back to Lobby resets match without dropping players');
+  console.log('OCHE NAVIGATION WEBSOCKET QA: 7 checks passed');
   for(const ws of all) if(ws.readyState===WS.OPEN) ws.close();
   server.close();process.exit(0);
 })().catch(e=>{console.error('OCHE NAVIGATION QA FAILED',e);for(const ws of all)try{ws.terminate();}catch{} try{server.close()}catch{}process.exit(1)});
