@@ -41,6 +41,9 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 #logo { display:flex; align-items:center; flex:none; gap:clamp(7px,.65vw,14px); font-family: var(--display); font-weight: 800; letter-spacing: .06em; color: var(--chalk); line-height: 1; }
 #logo img { width:clamp(37px,3.8vw,66px); height:clamp(37px,3.8vw,66px); flex:none; display:block; border-radius:9px; object-fit:contain; box-shadow:0 2px 10px #0008; }
 #logo span { font-size:clamp(27px,3.05vw,57px); }
+#backLobbyTV{flex:0 0 auto;min-height:44px;max-width:126px;padding:7px 9px;border:1px solid var(--brass);border-radius:8px;background:#192520;color:var(--chalk);font:700 12px/1.2 var(--display);cursor:pointer}
+#backLobbyTV:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+#backLobbyTV[hidden]{display:none!important}
 #modeLine { min-width:0; flex:1; font-size: clamp(14px, 1.15vw, 22px); color: var(--chalk-dim); text-align: right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 #rows { flex: 1; display: flex; flex-direction: column; gap: .6vh; min-height: 0; }
 .row {
@@ -237,7 +240,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--room
 
 <aside id="panel">
   <div id="board">
-    <div id="boardHead"><div id="logo"><img src="/assets/img/oche-numbered-crest.jpg" alt="" width="66" height="66" decoding="async" onerror="this.hidden=true"><span>OCHE</span></div><div id="modeLine"></div></div>
+    <div id="boardHead"><div id="logo"><img src="/assets/img/oche-numbered-crest.jpg" alt="" width="66" height="66" decoding="async" onerror="this.hidden=true"><span>OCHE</span></div><div id="modeLine"></div><button id="backLobbyTV" type="button" aria-label="Back to Lobby" hidden>← Back to Lobby</button></div>
     <div id="lobby">
       <div class="step">On your phone, open <span class="url" id="joinUrl"></span> and enter this code:</div>
       <div id="code">----</div>
@@ -1217,6 +1220,8 @@ function onMessage(m) {
 function onState(m) {
   const prev = S;
   S = m;
+  // Keep room controls inside the scoreboard, away from the dartboard.
+  $('backLobbyTV').hidden = m.phase === 'lobby';
   const key = m.phase + ':' + (m.game ? m.game.turnPhase : '');
   if (key !== lastPhaseKey) {
     if (m.game && m.game.turnPhase === 'collect') collectStart = performance.now();
@@ -1310,6 +1315,11 @@ function updateFullscreenButton() {
   $('fullscreenBtn').setAttribute('aria-label', full ? 'Exit fullscreen' : 'Enter fullscreen');
 }
 $('fullscreenBtn').addEventListener('click', toggleFullscreen);
+$('backLobbyTV').addEventListener('click', () => {
+  if (!S || S.phase === 'lobby' || !host || !ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!confirm('Return everybody to the lobby? The current match will end.')) return;
+  ws.send(JSON.stringify({t:'returnLobby',hostKey:host.hostKey}));
+});
 document.addEventListener('fullscreenchange', updateFullscreenButton);
 $('startBtn').addEventListener('click', begin);
 $('splash').addEventListener('click', e => { if (e.target.id !== 'startBtn') begin(); });

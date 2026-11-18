@@ -249,6 +249,7 @@ input:focus { border-color: var(--brass); }
   <button class="btn ghost" id="undoBtn" type="button">Undo last dart</button>
   <p class="dim" style="font-size:15px">For a dart that went off by accident.</p>
   <button class="btn ghost" id="skipBtn" type="button">Skip this turn</button>
+  <button class="btn ghost" id="backToLobbyCaptain" type="button">← Back to Lobby</button>
   <button class="btn danger" id="endBtn" type="button">End the game</button>
   <button class="btn" data-close type="button">Close</button>
 </div></div>
@@ -665,6 +666,13 @@ $('leaveBtn').addEventListener('click', leaveGame);
 $('backToJoin').addEventListener('click', leaveGame);
 $('undoBtn').addEventListener('click', () => { send({ t: 'undo' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); });
 $('skipBtn').addEventListener('click', () => { send({ t: 'skip' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); });
+$('backToLobbyCaptain').addEventListener('click', () => {
+  if (!S || !isCaptain()) return;
+  if (S.phase !== 'lobby' && !confirm('Return everyone to the lobby? This ends the current match.')) return;
+  resetInputOnInterruption();
+  document.querySelectorAll('.sheet').forEach(sheet => sheet.classList.remove('on'));
+  send({t:'returnLobby'});
+});
 $('endBtn').addEventListener('click', () => {
   if (confirm('End the game for everyone?')) { send({ t: 'end' }); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('on')); }
 });
