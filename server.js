@@ -52,8 +52,10 @@ const TYPES = {
   '.wav': 'audio/wav', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.txt': 'text/plain'
 };
 const ROUTES = { '/': 'index.html', '/tv': 'tv.html', '/phone': 'phone.html' };
+let shuttingDown = false;
 
 const server = http.createServer((req, res) => {
+  if (shuttingDown) { res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8', 'Retry-After': '2' }); return res.end('Server restarting'); }
   let pathname;
   try { pathname = decodeURIComponent(new URL(req.url, 'http://local').pathname); }
   catch { res.writeHead(400); return res.end(); }
@@ -599,10 +601,12 @@ const HANDLERS = {
 const wss = new WebSocketServer({ server, maxPayload: 16 * 1024 });
 
 wss.on('connection', ws => {
+  if (shuttingDown) { ws.close(1012, 'Server restarting'); return; }
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', raw => {
+    if (shuttingDown) return;
     let m;
     try { m = JSON.parse(raw); } catch { return; }
     if (!m || typeof m.t !== 'string') return;
@@ -657,7 +661,7 @@ wss.on('connection', ws => {
 });
 
 // Keep connections alive (Render closes idle sockets) and drop dead ones.
-setInterval(() => {
+const heartbeatTimer = setInterval(() => {
   for (const ws of wss.clients) {
     if (!ws.isAlive) { ws.terminate(); continue; }
     ws.isAlive = false;
@@ -666,7 +670,7 @@ setInterval(() => {
 }, 25000);
 
 // Remove abandoned rooms.
-setInterval(() => {
+const pruneTimer = setInterval(() => {
   const now = Date.now();
   for (const room of rooms.values()) {
     const anyone = (room.tv && room.tv.readyState === 1) || room.players.some(p => p.online);
@@ -675,5 +679,39 @@ setInterval(() => {
 }, 60000);
 
 server.listen(PORT, () => console.log('OCHE running on port ' + PORT));
+
+// OCHE is memory-only: a new Render process must issue a NEW room code.
+// Tell connected screens why their game is closing and let their existing
+// reconnect handlers recover to the host's new lobby and invitation QR.
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log('OCHE: draining connections on ' + signal);
+  clearInterval(heartbeatTimer);
+  clearInterval(pruneTimer);
+  for (const room of rooms.values()) clearTimers(room);
+  const watchdog = setTimeout(() => {
+    console.error('OCHE: shutdown exceeded 9.5 seconds');
+    process.exit(1);
+  }, 9500);
+  const forceSockets = setTimeout(() => {
+    for (const ws of wss.clients) ws.terminate();
+  }, 2500);
+  forceSockets.unref?.();
+  for (const ws of wss.clients) {
+    send(ws, {t:'serverRestarting'});
+    try { ws.close(1012, 'Server restarting'); } catch { ws.terminate(); }
+  }
+  wss.close();
+  server.close(error => {
+    clearTimeout(forceSockets);
+    clearTimeout(watchdog);
+    if (error) console.error('OCHE: HTTP shutdown failed:', error.message);
+    process.exit(error ? 1 : 0);
+  });
+  server.closeIdleConnections?.();
+}
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));
 
 module.exports = { server };
