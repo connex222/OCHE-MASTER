@@ -17,6 +17,8 @@ RUN node test/frontend-polish.js
 RUN node test/input-recovery.js
 # Verify leaving and changing rooms never corrupt an active game.
 RUN node test/navigation-smoke.js
+# Verify Render SIGTERM, close code 1012, and fresh-room QR recovery over real WebSockets.
+RUN node test/restart-shutdown.js
 # Twelve server-authoritative avatars; distinct casting and skippable walk-ons.
 RUN node test/avatar-walkon.js
 # Verify the 12 uploaded transparent portraits exactly match the new Bible.
