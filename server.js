@@ -606,9 +606,8 @@ wss.on('connection', ws => {
     let m;
     try { m = JSON.parse(raw); } catch { return; }
     if (!m || typeof m.t !== 'string') return;
-    const fn = HANDLERS[m.t];
-    if (!fn) return;
-    if (m.t === 'host' || m.t === 'join') return fn(ws, m);
+    // Handle protected lobby reset before looking up generic phone actions.
+    // This message is deliberately not exposed through HANDLERS.
     // TV must prove possession of the private room host key. A phone must
     // be the current captain; guests cannot interrupt somebody else's match.
     if (m.t === 'returnLobby') {
@@ -624,6 +623,9 @@ wss.on('connection', ws => {
       else pushState(room);
       return;
     }
+    const fn = HANDLERS[m.t];
+    if (!fn) return;
+    if (m.t === 'host' || m.t === 'join') return fn(ws, m);
     const room = ws.room;
     if (!room || ws.role !== 'phone') return;
     const player = playerById(room, ws.playerId);
