@@ -14,11 +14,16 @@ const connect = () => new Promise((resolve, reject) => {
   ws.once('open', () => { all.push(ws); resolve(ws); });
   ws.once('error', reject);
 });
-const waitFrom = (ws, n, pred, ms=4000) => {
+const waitFrom = (ws, n, pred, ms=6500) => {
   const already = ws.q.slice(n).find(pred);
   if (already) return Promise.resolve(already);
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { ws.off('packet', on); reject(new Error('OCHE navigation test timed out')); }, ms);
+    const timer = setTimeout(() => {
+      ws.off('packet', on);
+      // Report only safe event metadata: NEVER dump session tokens or QR host keys.
+      const recent=ws.q.slice(-6).map(m=>[m.t,m.phase||m.game?.turnPhase||''].filter(Boolean).join(':')).join(', ');
+      reject(new Error('OCHE navigation event timed out; recent events: '+(recent||'(none)')));
+    }, ms);
     const on = m => { if (!pred(m)) return; clearTimeout(timer); ws.off('packet', on); resolve(m); };
     ws.on('packet', on);
   });

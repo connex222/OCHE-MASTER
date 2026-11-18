@@ -1130,6 +1130,10 @@ function connect() {
 
 function onMessage(m) {
   switch (m.t) {
+    case 'serverRestarting':
+      $('conn').classList.add('on');
+      toast('Server restarting — a new room code and QR invitation will appear when it returns.');
+      break;
     case 'hosted':
       host = { code: m.code, hostKey: m.hostKey };
       sessionStorage.setItem('oche.host', JSON.stringify(host));
