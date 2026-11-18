@@ -296,7 +296,7 @@ const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch { /
    Networking
    ===================================================================== */
 let ws = null, S = null, me = null, catalog = [], generic = [], avatars = [], joined = false, code = '', replaced = false;
-let awaiting = false, awaitTimer = 0, linkReady = false;
+let awaiting = false, awaitTimer = 0, linkReady = false, serverRestartPending = false;
 
 function connect() {
   linkReady = false;
@@ -315,13 +315,14 @@ function connect() {
 function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); }
 function setNetworkStatus(connected) {
   $('netNotice').hidden = connected;
-  if (!connected) $('netNotice').textContent = 'Connection lost — reconnecting. Throws are paused.';
+  if (!connected) $('netNotice').textContent = serverRestartPending ? 'Server restarting — wait for the TV to show a new room QR. Throws are paused.' : 'Connection lost — reconnecting. Throws are paused.';
 }
 function sendJoin() { send({ t: 'join', code, name: store.get('name', ''), playerId: pid, difficulty, control: control || 'motion', avatarId: store.get('avatarId', null) }); }
 
 function onMessage(m) {
   switch (m.t) {
     case 'welcome':
+      serverRestartPending = false;
       joined = true; linkReady = true; setNetworkStatus(true);
       me = { id: m.id, colour: m.colour }; catalog = m.catalog; generic = m.generic;
       if (m.avatarId) store.set('avatarId', m.avatarId);
@@ -331,7 +332,28 @@ function onMessage(m) {
       wakeLock();
       route();
       break;
+    case 'serverRestarting':
+      serverRestartPending = true;
+      linkReady = false;
+      setNetworkStatus(false);
+      resetInputOnInterruption();
+      break;
     case 'error':
+      if (m.code === 'noRoom') {
+        // Render's memory-only restart invalidates the old room code.
+        // Keep player name, avatar and throw calibration but never try to
+        // join an expired table forever behind the old game screen.
+        serverRestartPending = false;
+        joined = false; linkReady = false; S = null; me = null; code = ''; draft = null;
+        store.set('room', '');
+        $('code').value = '';
+        clearAwait();
+        resetInputOnInterruption();
+        document.querySelectorAll('.sheet').forEach(sheet => sheet.classList.remove('on'));
+        $('joinErr').textContent = 'That table has ended or the server restarted. Scan the new QR code on the TV to join again.';
+        route();
+        break;
+      }
       if (!joined) { $('joinErr').textContent = m.message; code = ''; store.set('room', ''); }
       else if (m.code === 'players') $('startErr').textContent = m.message;
       else if (['avatarTaken', 'avatarLocked', 'avatarInvalid'].includes(m.code)) { $('avatarErr').textContent = m.message; $('avatarPicker').open = true; }
