@@ -985,7 +985,8 @@ function renderPanel() {
   const view = g.view;
   const rowsHtml = g.order.map((id, seat) => {
     const p = player(id) || { name: '?', colour: '#888', online: false };
-    const r = view ? view.rows[seat] : { main: '', sub: '' };
+    const r = flightScoreView && flightScoreView.id === id && flying
+      ? flightScoreView.row : (view ? view.rows[seat] : { main: '', sub: '' });
     const isCur = id === g.currentId;
     const out = r && r.sub === 'Out';
     let legs = '';
@@ -1210,7 +1211,7 @@ function onMessage(m) {
       if (p) { callout(p.name, 'throws first', 'gold'); Caller.say(null, p.name + ' to throw first. Game on'); }
       break;
     }
-    case 'undone': toast('Last dart undone'); flying = null; break;
+    case 'undone': toast('Last dart undone'); flying = null; flightScoreView = null; renderPanel(); break;
     case 'replaced':
       replaced = true;
       clearTimeout(scheduledTurnCall);
@@ -1235,7 +1236,14 @@ function onState(m) {
   renderPanel();
 }
 
+let flightScoreView = null;
 function onDart(m) {
+  // Freeze the throwing player's visible score until the dart hits the board.
+  // The server remains authoritative and may publish the updated state in flight.
+  const scoreBeforeFlight = S && S.game && S.game.view && S.game.view.rows
+    ? { id: m.id, row: S.game.view.rows[S.game.order.indexOf(m.id)] }
+    : null;
+  flightScoreView = scoreBeforeFlight;
   const now = performance.now();
   const colour = colourOf(m.id);
   const from = toScreen(m.phys.aim.x * 0.35, -B.SUR * 1.6);
@@ -1245,6 +1253,7 @@ function onDart(m) {
     fromX: from.x, fromY: area.h * 1.08, x: m.dart.x, y: m.dart.y,
     arc: m.phys.flight.arc, wobble: m.phys.flight.wobble, reached: m.dart.reached, bounceOut: m.dart.bounceOut, colour,
     onLand: () => {
+      flightScoreView = null;
       renderPanel();
       const label = m.dart.bounceOut ? 'Bounce out' : m.dart.label === 'MISS' ? (m.dart.reached ? 'Miss' : 'Fell short') : m.dart.label;
       dartInfo(m.bulloff ? m.text : label + (m.text && m.text !== m.dart.label && !m.bulloff ? '   ' + m.text : ''), m.phys.feedback);
