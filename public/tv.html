@@ -430,6 +430,16 @@ const Sound = (() => {
     const g = ctx.createGain(); env(g, t, Math.min(0.02, dur / 4), vol, dur);
     s.connect(f).connect(g).connect(master); s.start(t); s.stop(t + dur + 0.05);
   }
+  // Immediate close-miked sisal thud on every dart that sticks, independent
+  // of the recorded impact assets and score/double sound cues.
+  function boardThud(strength = 1) {
+    if (!ctx || muted) return;
+    const t = ctx.currentTime + 0.004;
+    const v = Math.max(0.55, Math.min(1.15, strength));
+    tone(116, t, 0.105, 0.55 * v, 'sine', 68);
+    burst(t, 0.048, 0.42 * v, 'lowpass', 1050, 290, 0.75);
+    burst(t + 0.004, 0.014, 0.11 * v, 'bandpass', 2800, 1350, 1.4);
+  }
   const SYNTH = {
     throw_whoosh: t => burst(t, 0.28, 0.35, 'bandpass', 500, 2600, 1.5),
     impact_board_1: t => { tone(150, t, 0.12, 0.8, 'sine', 55); burst(t, 0.06, 0.5, 'lowpass', 1400); },
@@ -483,7 +493,7 @@ const Sound = (() => {
     }
     if (m && window.speechSynthesis) speechSynthesis.cancel();
   }
-  return { init, play, loop, stopLoop, loadOptional, playBuffer, playSegment, setMuted, duckVoice, unduckVoice, get muted() { return muted; }, get ready() { return !!ctx; } };
+  return { init, play, boardThud, loop, stopLoop, loadOptional, playBuffer, playSegment, setMuted, duckVoice, unduckVoice, get muted() { return muted; }, get ready() { return !!ctx; } };
 })();
 
 /* The darts caller. Uses recorded clips from /assets/sfx/caller/ when present,
@@ -718,12 +728,30 @@ function drawBackground(now) {
 function drawStuckDart(x, y, colour, alpha) {
   const p = toScreen(x, y), k = SCALE * cam.z;
   ctx.save(); ctx.globalAlpha = alpha;
+  // Contact shadow anchors the steel point to the sisal rather than floating.
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath(); ctx.ellipse(p.x + 1.6*k, p.y + 2.1*k, 3.2*k, 1.8*k, -0.3, 0, Math.PI*2); ctx.fill();
   if (IMG.stuckBody && IMG.stuckFlight) {
     // Spec: 512x512, dart tip at pixel (256, 480). Drawn 70 mm tall.
     const size = 70 * k, sc = size / 512;
     ctx.translate(p.x, p.y); ctx.scale(sc, sc); ctx.translate(-256, -480);
     ctx.drawImage(IMG.stuckBody, 0, 0);
     ctx.drawImage(tinted(IMG.stuckFlight, colour), 0, 0);
+    // Brushed-metal glint, segmented grip and sharper tapered steel point.
+    const metal = ctx.createLinearGradient(249, 270, 268, 270);
+    metal.addColorStop(0, 'rgba(10,14,18,.65)');
+    metal.addColorStop(.38, 'rgba(242,248,250,.85)');
+    metal.addColorStop(.65, 'rgba(135,151,164,.40)');
+    metal.addColorStop(1, 'rgba(20,24,30,.60)');
+    ctx.strokeStyle = metal; ctx.lineWidth = 8; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(256, 448); ctx.lineTo(258, 343); ctx.stroke();
+    ctx.strokeStyle = 'rgba(18,23,29,.72)'; ctx.lineWidth = 1.8;
+    for (let j = 0; j < 9; j++) {
+      const y = 357 + j*6;
+      ctx.beginPath(); ctx.moveTo(253, y); ctx.lineTo(262, y-1); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(240,244,246,.80)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(256, 448); ctx.lineTo(256, 479); ctx.stroke();
   } else {
     // Procedural: dart pointing out of the board, slightly up and right.
     ctx.translate(p.x, p.y);
@@ -770,6 +798,9 @@ function drawFlyingDart(fl, now) {
     ctx.translate(sx, sy); ctx.rotate(spin); ctx.scale(sc, sc); ctx.translate(-256, -256);
     ctx.drawImage(IMG.flyBody, 0, 0);
     ctx.drawImage(tinted(IMG.flyFlight, fl.colour), 0, 0);
+    // Slim specular line makes the moving barrel read as machined steel.
+    ctx.strokeStyle = 'rgba(245,249,250,.72)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(250, 312); ctx.lineTo(258, 226); ctx.stroke();
   } else {
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.beginPath(); ctx.ellipse(sx + 6 * k, sy + 10 * k, 14 * k, 6 * k, 0, 0, Math.PI * 2); ctx.fill();
@@ -876,7 +907,8 @@ function land(fl, now) {
     Sound.play('impact_wall');
     shake = 0.7;
   } else {
-    Sound.play('impact_board_' + (1 + Math.floor(Math.random() * 3)), 1, 0.95 + Math.random() * 0.1);
+    Sound.boardThud(0.95 + Math.random() * 0.1);
+    Sound.play('impact_board_' + (1 + Math.floor(Math.random() * 3)), 0.8, 0.95 + Math.random() * 0.1);
     shake = 1;
     for (let i = 0; i < 12; i++) {
       const a = Math.random() * Math.PI * 2, v = 80 + Math.random() * 160;
